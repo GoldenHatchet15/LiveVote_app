@@ -1,0 +1,101 @@
+// LiveVote data model. SQLite via Prisma.
+//
+// SQLite has no native enums or arrays, so enum-like fields are stored as
+// strings (validated at the app boundary with the shared zod schemas) and
+// "correctOptionIds[]" is modeled as a boolean `isCorrect` flag on Option.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model QuestionSet {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
+  sessions    Session[]
+}
+
+model Question {
+  id           String      @id @default(cuid())
+  set          QuestionSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  setId        String
+  text         String
+  imageUrl     String?
+  mode         String // "POLL" | "QUIZ"
+  timeLimitSec Int? // 10|20|30|60 or null
+  points       String // "STANDARD" | "DOUBLE" | "NONE"
+  order        Int
+  options      Option[]
+  answers      Answer[]
+
+  @@index([setId])
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  text       String
+  index      Int // 0..3
+  isCorrect  Boolean  @default(false)
+  answers    Answer[]
+
+  @@index([questionId])
+}
+
+model Session {
+  id                  String      @id @default(cuid())
+  pin                 String
+  set                 QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Restrict)
+  questionSetId       String
+  state               String      @default("LOBBY") // LOBBY|QUESTION|REVEAL|LEADERBOARD|ENDED
+  currentQuestionIndex Int        @default(0)
+  questionStartedAt   DateTime?
+  createdAt           DateTime    @default(now())
+  endedAt             DateTime?
+  players             Player[]
+
+  @@index([pin])
+  @@index([state])
+}
+
+model Player {
+  id             String   @id @default(cuid())
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId      String
+  nickname       String
+  reconnectToken String   @unique
+  score          Int      @default(0)
+  streak         Int      @default(0)
+  kicked         Boolean  @default(false)
+  connected      Boolean  @default(false)
+  joinedAt       DateTime @default(now())
+  answers        Answer[]
+
+  @@unique([sessionId, nickname])
+  @@index([sessionId])
+}
+
+model Answer {
+  id            String   @id @default(cuid())
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId      String
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId    String
+  option        Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  optionId      String
+  answeredAt    DateTime @default(now())
+  responseMs    Int      @default(0)
+  pointsAwarded Int      @default(0)
+
+  @@unique([playerId, questionId])
+  @@index([questionId])
+}

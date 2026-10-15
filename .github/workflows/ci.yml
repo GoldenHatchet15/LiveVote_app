@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Shared SQLite DB for the server unit/integration tests.
+      DATABASE_URL: file:./dev.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate Prisma client & migrate test DB
+        run: |
+          npm run db:generate -w server
+          npm run db:migrate -w server
+
+      - name: Build (shared, server, client)
+        run: npm run build
+
+      - name: Unit & integration tests (server)
+        run: npm run test -w server
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

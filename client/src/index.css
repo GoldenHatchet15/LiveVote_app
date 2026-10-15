@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: #f6f7fb;
+  color: #11131a;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Baloo 2', system-ui, sans-serif;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold
+      transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-ink ring-1 ring-black/10 hover:bg-black/5;
+  }
+  .btn-dark {
+    @apply btn bg-ink text-white hover:bg-black;
+  }
+  .card {
+    @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5;
+  }
+  .input {
+    @apply w-full rounded-xl border-0 bg-white px-4 py-3 text-ink shadow-sm ring-1
+      ring-black/10 outline-none placeholder:text-black/40 focus:ring-2 focus:ring-brand;
+  }
+  .label {
+    @apply mb-1 block text-sm font-semibold text-ink/70;
+  }
+}
+
+/* Large projection-friendly utilities for the host screen. */
+.host-screen {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #ffe0e3 0%, transparent 60%),
+    radial-gradient(1000px 500px at 110% 10%, #e0e7ff 0%, transparent 55%), #0b0d14;
+  color: white;
+}

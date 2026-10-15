@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+**/dist
+build
+coverage
+.git
+.github
+test-results
+playwright-report
+*.db
+*.db-journal
+server/prisma/*.db
+.env
+.env.local
+e2e

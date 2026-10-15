@@ -1,0 +1,35 @@
+{
+  "name": "livevote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LiveVote — Kahoot-style live polling and quiz app",
+  "license": "MIT",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
+    "start": "npm run start -w server",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
+    "db:reset": "npm run db:reset -w server",
+    "test": "npm run test -w server",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "lint": "npm run lint -w server && npm run lint -w client",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.47.2",
+    "concurrently": "9.0.1",
+    "typescript": "5.6.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

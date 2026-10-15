@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.local
+
+# SQLite databases
+*.db
+*.db-journal
+server/prisma/*.db
+server/prisma/*.db-journal
+
+# Prisma generated client
+server/prisma/generated/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp

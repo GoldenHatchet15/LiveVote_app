@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    image: livevote
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # SQLite file on the mounted volume so data survives restarts.
+      DATABASE_URL: file:/app/data/livevote.db
+      # CHANGE THESE before any real/public use.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-insecure-secret-change-me-0123456789abcdef}
+      # The URL players use to join (what the QR code encodes). For same-Wi-Fi
+      # play set this to your laptop's LAN IP; for Cloudflare Tunnel, the tunnel URL.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    volumes:
+      - livevote-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  livevote-data:
