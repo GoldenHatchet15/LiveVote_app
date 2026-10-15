@@ -28,6 +28,7 @@ export interface HostState {
   results: QuestionResults | null;
   leaderboard: LeaderboardEntry[];
   ended: { podium: LeaderboardEntry[]; full: LeaderboardEntry[] } | null;
+  showVoterNames: boolean;
 }
 
 const initial = (sessionId: string): HostState => ({
@@ -48,6 +49,7 @@ const initial = (sessionId: string): HostState => ({
   results: null,
   leaderboard: [],
   ended: null,
+  showVoterNames: false,
 });
 
 export function useHostSession(sessionId: string) {
@@ -88,6 +90,7 @@ export function useHostSession(sessionId: string) {
                 options: snap.currentQuestion.options,
                 timeLimitSec: snap.currentQuestion.timeLimitSec,
                 points: snap.currentQuestion.points,
+                showVoterNames: snap.showVoterNames,
               }
             : null,
           serverNow: snap.serverNow,
@@ -97,6 +100,7 @@ export function useHostSession(sessionId: string) {
           totalForProgress: snap.players.length,
           results: snap.results,
           leaderboard: snap.leaderboard,
+          showVoterNames: snap.showVoterNames,
         });
       });
     };
@@ -127,6 +131,7 @@ export function useHostSession(sessionId: string) {
       patch({ answered: p.answered, totalForProgress: p.total }),
     );
     socket.on('reveal', (p) => patch({ results: p.results }));
+    socket.on('voterNames:update', (p) => patch({ showVoterNames: p.enabled }));
     socket.on('leaderboard', (p) => patch({ leaderboard: p.full }));
     socket.on('session:ended', (p) =>
       patch({ ended: { podium: p.podium, full: p.full }, leaderboard: p.full }),
@@ -147,6 +152,11 @@ export function useHostSession(sessionId: string) {
       socketRef.current?.emit('host:kick', { sessionId, playerId }, () => {}),
     [sessionId],
   );
+  const setVoterNames = useCallback(
+    (enabled: boolean) =>
+      socketRef.current?.emit('host:setVoterNames', { sessionId, enabled }, () => {}),
+    [sessionId],
+  );
 
-  return { state: s, action, kick };
+  return { state: s, action, kick, setVoterNames };
 }

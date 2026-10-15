@@ -35,6 +35,8 @@ export interface PlayState {
   rank: number;
   totalPlayers: number;
   finalRank: number | null;
+  /** When true, show the "your name will be shown with your answer" notice. */
+  showVoterNames: boolean;
 }
 
 const STORAGE_KEY = 'livevote.player';
@@ -86,6 +88,7 @@ const initial: PlayState = {
   rank: 0,
   totalPlayers: 0,
   finalRank: null,
+  showVoterNames: false,
 };
 
 export function usePlaySession(initialPin: string) {
@@ -123,6 +126,7 @@ export function usePlaySession(initialPin: string) {
         score: snap.score,
         rank: snap.rank,
         totalPlayers: snap.totalPlayers,
+        showVoterNames: snap.showVoterNames,
       });
     },
     [patch],
@@ -185,8 +189,10 @@ export function usePlaySession(initialPin: string) {
         endsAt: p.endsAt,
         selectedOptionId: null,
         result: null,
+        showVoterNames: p.question.showVoterNames,
       }),
     );
+    socket.on('voterNames:update', (p) => patch({ showVoterNames: p.enabled }));
     socket.on('session:state', (p) => {
       if (p.state === 'LEADERBOARD') patch({ phase: 'standings' });
       if (p.state === 'LOBBY') patch({ phase: 'lobby' });

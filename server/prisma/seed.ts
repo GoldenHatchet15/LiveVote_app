@@ -17,6 +17,7 @@ interface SeedQuestion {
 interface SeedSet {
   title: string;
   description: string;
+  showVoterNames?: boolean;
   questions: SeedQuestion[];
 }
 
@@ -88,6 +89,8 @@ const QUIZ_SET: SeedSet = {
 const POLL_SET: SeedSet = {
   title: 'Icebreaker Poll',
   description: 'No right answers — just see what the room thinks.',
+  // Demonstrates the "show voter names" setting out of the box.
+  showVoterNames: true,
   questions: [
     {
       text: 'How are you feeling about today’s session?',
@@ -140,6 +143,7 @@ async function createSet(set: SeedSet): Promise<void> {
     data: {
       title: set.title,
       description: set.description,
+      showVoterNames: set.showVoterNames ?? false,
       questions: {
         create: set.questions.map((q, qi) => ({
           text: q.text,

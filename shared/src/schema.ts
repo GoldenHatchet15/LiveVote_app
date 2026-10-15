@@ -91,6 +91,8 @@ export const questionInputSchema = z
 export const questionSetInputSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(SET_TITLE_MAX),
   description: z.string().trim().max(1000).nullable().optional().default(null),
+  /** Show which players chose each option on the host results screen. */
+  showVoterNames: z.boolean().optional().default(false),
   questions: z.array(questionInputSchema).default([]),
 });
 

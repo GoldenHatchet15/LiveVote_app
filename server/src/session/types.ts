@@ -31,6 +31,7 @@ export interface LoadedSet {
   id: string;
   title: string;
   description: string | null;
+  showVoterNames: boolean;
   questions: LoadedQuestion[];
 }
 

@@ -13,7 +13,7 @@ import { Ended } from './screens/Ended';
 
 export function HostApp() {
   const { sessionId } = useParams();
-  const { state, action, kick } = useHostSession(sessionId ?? '');
+  const { state, action, kick, setVoterNames } = useHostSession(sessionId ?? '');
   const [baseUrl, setBaseUrl] = useState<string>(() =>
     typeof window !== 'undefined' ? window.location.origin : '',
   );
@@ -58,12 +58,14 @@ export function HostApp() {
         toggleMute();
       } else if (e.key.toLowerCase() === 'r' && state.state === 'REVEAL') {
         setHideResults((v) => !v);
+      } else if (e.key.toLowerCase() === 'n' && state.state !== 'ENDED') {
+        setVoterNames(!state.showVoterNames);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.state, action]);
+  }, [state.state, state.showVoterNames, action, setVoterNames]);
 
   function toggleMute() {
     setMuted((m) => {
@@ -100,6 +102,8 @@ export function HostApp() {
           qrUrl={qrUrl}
           title={state.title}
           players={state.players}
+          showVoterNames={state.showVoterNames}
+          onToggleVoterNames={() => setVoterNames(!state.showVoterNames)}
         />
       )}
       {state.state === 'QUESTION' && state.question && (
@@ -124,10 +128,12 @@ export function HostApp() {
         players={state.players}
         muted={muted}
         hideResults={hideResults}
+        showVoterNames={state.showVoterNames}
         onAction={action}
         onKick={kick}
         onToggleMute={toggleMute}
         onToggleHide={() => setHideResults((v) => !v)}
+        onToggleVoterNames={() => setVoterNames(!state.showVoterNames)}
         csvUrl={csvUrl}
       />
     </div>

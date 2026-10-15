@@ -19,6 +19,7 @@ server/prisma/generated/
 test-results/
 playwright-report/
 playwright/.cache/
+screenshots/
 
 # OS / editor
 .DS_Store

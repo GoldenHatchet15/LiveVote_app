@@ -20,20 +20,24 @@ export function Controls({
   players,
   muted,
   hideResults,
+  showVoterNames,
   onAction,
   onKick,
   onToggleMute,
   onToggleHide,
+  onToggleVoterNames,
   csvUrl,
 }: {
   state: SessionState;
   players: PlayerSummary[];
   muted: boolean;
   hideResults: boolean;
+  showVoterNames: boolean;
   onAction: (a: HostAction) => void;
   onKick: (playerId: string) => void;
   onToggleMute: () => void;
   onToggleHide: () => void;
+  onToggleVoterNames: () => void;
   csvUrl: string;
 }) {
   const [showPlayers, setShowPlayers] = useState(false);
@@ -64,6 +68,19 @@ export function Controls({
               title="Show/hide results (R)"
             >
               {hideResults ? 'Show results' : 'Hide results'}
+            </button>
+          )}
+          {state !== 'ENDED' && (
+            <button
+              data-testid="toggle-voter-names"
+              aria-pressed={showVoterNames}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                showVoterNames ? 'bg-brand text-white hover:bg-brand-700' : 'bg-white/10 hover:bg-white/20'
+              }`}
+              onClick={onToggleVoterNames}
+              title="Show voter names on results (N)"
+            >
+              Names: {showVoterNames ? 'On' : 'Off'}
             </button>
           )}
           <a

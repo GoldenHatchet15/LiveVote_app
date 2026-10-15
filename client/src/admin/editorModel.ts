@@ -24,6 +24,7 @@ export interface EditQuestion {
 export interface EditState {
   title: string;
   description: string;
+  showVoterNames: boolean;
   questions: EditQuestion[];
 }
 
@@ -47,13 +48,14 @@ export function blankQuestion(): EditQuestion {
 }
 
 export function emptyState(): EditState {
-  return { title: '', description: '', questions: [blankQuestion()] };
+  return { title: '', description: '', showVoterNames: false, questions: [blankQuestion()] };
 }
 
 export function fromSet(set: QuestionSet): EditState {
   return {
     title: set.title,
     description: set.description ?? '',
+    showVoterNames: set.showVoterNames,
     questions: set.questions.map((q) => {
       const options = q.options.map((o) => ({ id: uid(), text: o.text }));
       const correct = q.options
@@ -77,6 +79,7 @@ export function toInput(state: EditState): QuestionSetInput {
   return {
     title: state.title.trim(),
     description: state.description.trim() ? state.description.trim() : null,
+    showVoterNames: state.showVoterNames,
     questions: state.questions.map((q) => ({
       text: q.text.trim(),
       imageUrl: q.imageUrl.trim() ? q.imageUrl.trim() : null,

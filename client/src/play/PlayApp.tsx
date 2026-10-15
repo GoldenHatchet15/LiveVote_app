@@ -16,6 +16,15 @@ export function PlayApp() {
           Connection lost — reconnecting…
         </div>
       )}
+      {state.showVoterNames &&
+        (state.phase === 'lobby' || state.phase === 'question' || state.phase === 'answered') && (
+          <div
+            data-testid="voter-names-notice"
+            className="bg-amber-400 px-3 py-1 text-center text-sm font-semibold text-ink"
+          >
+            Your name will be shown with your answer.
+          </div>
+        )}
       {state.phase === 'join' && (
         <JoinScreen initialPin={initialPin} state={state} onJoin={join} />
       )}
