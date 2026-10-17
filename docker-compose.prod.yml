@@ -47,9 +47,10 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN from the Cloudflare Zero Trust dashboard}
     restart: unless-stopped
+    # Short-form for broad compose compatibility; cloudflared retries the origin
+    # until the app is up, so strict health-gating isn't required.
     depends_on:
-      app:
-        condition: service_healthy
+      - app
     networks:
       - livevote
 
