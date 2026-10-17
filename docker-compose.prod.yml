@@ -1,0 +1,61 @@
+# LiveVote — PRODUCTION compose (Cloudflare Tunnel).
+#
+# The app container does NOT publish any port to the host: the ONLY way in is
+# through the cloudflared tunnel over the internal Docker network. Run with:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Required .env values (see .env.prod.example): SESSION_SECRET, ADMIN_PASSWORD_HASH
+# (or ADMIN_PASSWORD), PUBLIC_BASE_URL, CORS_ORIGINS, TUNNEL_TOKEN.
+
+services:
+  app:
+    build: .
+    image: livevote
+    # Internal only — reachable by cloudflared on the Docker network, never from
+    # the host/LAN. (No `ports:` mapping on purpose.)
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: file:/app/data/livevote.db
+      # Prefer a hashed password; leave ADMIN_PASSWORD blank if using the hash.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env (long random string)}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL, e.g. https://livevote.jrcodestudio.org}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS to the public URL}
+      # We run behind Cloudflare: read the real client IP from CF-Connecting-IP.
+      TRUST_PROXY: 'true'
+      DATA_RETENTION_DAYS: ${DATA_RETENTION_DAYS:-30}
+    volumes:
+      - livevote-data:/app/data
+    restart: unless-stopped
+    networks:
+      - livevote
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+  cloudflared:
+    # Pin a specific release; bump periodically. `latest` also works.
+    image: cloudflare/cloudflared:2024.12.2
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN from the Cloudflare Zero Trust dashboard}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - livevote
+
+networks:
+  livevote:
+    driver: bridge
+
+volumes:
+  livevote-data:

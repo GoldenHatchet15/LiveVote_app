@@ -55,7 +55,8 @@ export async function adminContext(
 ): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext();
   const res = await context.request.post('/api/auth/login', {
-    data: { password: 'changeme' },
+    // Override for a live/production smoke test via ADMIN_PASSWORD.
+    data: { password: process.env.ADMIN_PASSWORD ?? 'changeme' },
   });
   expect(res.ok()).toBeTruthy();
   const page = await context.newPage();

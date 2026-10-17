@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 3200;
-const BASE = `http://localhost:${PORT}`;
+// Point at a live deployment for the production smoke test:
+//   PLAYWRIGHT_BASE_URL=https://livevote.jrcodestudio.org npx playwright test …
+const EXTERNAL_BASE = process.env.PLAYWRIGHT_BASE_URL;
+const BASE = EXTERNAL_BASE ?? `http://localhost:${PORT}`;
 
 /**
  * E2E runs against the real built app on an isolated SQLite file. The server
@@ -23,7 +26,8 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
+  // When testing a live URL, don't boot a local server.
+  webServer: EXTERNAL_BASE ? undefined : {
     command: 'sh scripts/e2e-server.sh',
     url: `${BASE}/api/health`,
     reuseExistingServer: !process.env.CI,

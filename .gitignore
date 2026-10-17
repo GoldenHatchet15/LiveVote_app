@@ -26,3 +26,6 @@ screenshots/
 .vscode/
 .idea/
 *.swp
+
+# Local DB backups
+backups/
