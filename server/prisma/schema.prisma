@@ -75,6 +75,8 @@ model Player {
   session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   sessionId      String
   nickname       String
+  avatarEmoji    String   @default("🐶")
+  color          String   @default("#0d9488")
   reconnectToken String   @unique
   score          Int      @default(0)
   streak         Int      @default(0)

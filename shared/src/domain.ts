@@ -95,6 +95,8 @@ export interface PublicQuestion {
 export interface PlayerSummary {
   id: string;
   nickname: string;
+  avatarEmoji: string;
+  color: string;
   score: number;
   streak: number;
   kicked: boolean;
@@ -104,10 +106,19 @@ export interface PlayerSummary {
 export interface LeaderboardEntry {
   playerId: string;
   nickname: string;
+  avatarEmoji: string;
+  color: string;
   score: number;
   rank: number;
   /** Points gained on the most recently revealed question. */
   lastGain: number;
+}
+
+/** A player's identity for name-tag display (emoji + coloured pill). */
+export interface Voter {
+  nickname: string;
+  avatarEmoji: string;
+  color: string;
 }
 
 /** Per-option tally used by the host REVEAL chart. */
@@ -124,13 +135,13 @@ export interface OptionTally {
  */
 export interface OptionVoters {
   optionId: string;
-  nicknames: string[];
+  voters: Voter[];
 }
 
 /** A labelled group of voter nicknames, for non-option reveal screens. */
 export interface VoterGroup {
   label: string;
-  nicknames: string[];
+  voters: Voter[];
   /** Highlight as the correct group (Quiz). */
   correct?: boolean;
 }
@@ -149,6 +160,8 @@ export interface OpenEndedCard {
   text: string;
   /** Present (host-only) when show-voter-names is on. */
   nickname?: string;
+  avatarEmoji?: string;
+  color?: string;
 }
 
 export interface QuestionResults {
@@ -193,8 +206,8 @@ export interface QuestionResults {
   voters?: OptionVoters[];
   /** Grouped voter nicknames for non-option types (Correct/Incorrect, etc.). */
   voterGroups?: VoterGroup[];
-  /** Nicknames of active players who did not answer. */
-  noAnswer?: string[];
+  /** Active players who did not answer. */
+  noAnswer?: Voter[];
 }
 
 /** Personal result sent to a single player at REVEAL. */

@@ -11,6 +11,7 @@ import {
   TYPE_ANSWER_MAX,
   type AnswerValue,
   type QuestionResults,
+  type Voter,
   type VoterGroup,
 } from '@livevote/shared';
 import { isProfane } from '../util/nickname.js';
@@ -107,8 +108,16 @@ export function prepareAnswer(q: LoadedQuestion, value: AnswerValue): PreparedAn
 export interface RevealEntry {
   playerId: string;
   nickname: string;
+  avatarEmoji: string;
+  color: string;
   answer: RecordedAnswer | null;
 }
+
+const toVoter = (e: RevealEntry): Voter => ({
+  nickname: e.nickname,
+  avatarEmoji: e.avatarEmoji,
+  color: e.color,
+});
 
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -154,14 +163,14 @@ export function buildResults(
   }
 
   const pct = (count: number) => (totalAnswers === 0 ? 0 : Math.round((count / totalAnswers) * 100));
-  const noAnswer = sortedByName.filter((e) => e.answer === null).map((e) => e.nickname);
+  const noAnswer = sortedByName.filter((e) => e.answer === null).map(toVoter);
 
   switch (q.type) {
     case 'MULTIPLE_CHOICE':
     case 'TRUE_FALSE':
     case 'MULTI_SELECT': {
       const counts = new Map<string, number>();
-      const voterMap = new Map<string, string[]>();
+      const voterMap = new Map<string, Voter[]>();
       for (const o of q.options) {
         counts.set(o.id, 0);
         voterMap.set(o.id, []);
@@ -172,12 +181,12 @@ export function buildResults(
         const ids = a.value.kind === 'option' ? [a.value.optionId] : a.value.kind === 'options' ? a.value.optionIds : [];
         for (const id of ids) {
           counts.set(id, (counts.get(id) ?? 0) + 1);
-          voterMap.get(id)?.push(e.nickname);
+          voterMap.get(id)?.push(toVoter(e));
         }
       }
       base.tallies = q.options.map((o) => ({ optionId: o.id, count: counts.get(o.id) ?? 0, percent: pct(counts.get(o.id) ?? 0) }));
       if (showNames) {
-        base.voters = q.options.map((o) => ({ optionId: o.id, nicknames: voterMap.get(o.id) ?? [] }));
+        base.voters = q.options.map((o) => ({ optionId: o.id, voters: voterMap.get(o.id) ?? [] }));
         base.noAnswer = noAnswer;
       }
       break;
@@ -194,21 +203,21 @@ export function buildResults(
     }
 
     case 'TYPE_ANSWER': {
-      const buckets = new Map<string, { display: string; count: number; correct: boolean; names: string[] }>();
+      const buckets = new Map<string, { display: string; count: number; correct: boolean; voters: Voter[] }>();
       // Seed accepted answers so the correct answer always shows.
       for (const acc of q.config.acceptedAnswers ?? []) {
         const norm = normalizeText(acc);
-        if (!buckets.has(norm)) buckets.set(norm, { display: acc, count: 0, correct: true, names: [] });
+        if (!buckets.has(norm)) buckets.set(norm, { display: acc, count: 0, correct: true, voters: [] });
       }
       for (const e of sortedByName) {
         const a = e.answer;
         if (!a || a.value.kind !== 'text') continue;
         const norm = normalizeText(a.value.text);
         const correct = grade(a).correct === true;
-        const bucket = buckets.get(norm) ?? { display: a.value.text, count: 0, correct, names: [] };
+        const bucket = buckets.get(norm) ?? { display: a.value.text, count: 0, correct, voters: [] };
         bucket.count += 1;
         bucket.correct = bucket.correct || correct;
-        bucket.names.push(e.nickname);
+        bucket.voters.push(toVoter(e));
         buckets.set(norm, bucket);
       }
       const rows = [...buckets.entries()]
@@ -217,14 +226,13 @@ export function buildResults(
       base.textAnswers = rows;
       if (showNames) {
         const groups: VoterGroup[] = [];
-        const correctNames = sortedByName
+        const correctVoters = sortedByName
           .filter((e) => e.answer && grade(e.answer).correct === true)
-          .map((e) => e.nickname);
-        groups.push({ label: 'Correct', nicknames: correctNames, correct: true });
-        for (const [norm, b] of buckets) {
+          .map(toVoter);
+        groups.push({ label: 'Correct', voters: correctVoters, correct: true });
+        for (const b of buckets.values()) {
           if (b.correct) continue;
-          groups.push({ label: b.display, nicknames: b.names, correct: false });
-          void norm;
+          groups.push({ label: b.display, voters: b.voters, correct: false });
         }
         base.voterGroups = groups;
         base.noAnswer = noAnswer;
@@ -254,7 +262,7 @@ export function buildResults(
           cards: visible.map((e) => ({
             id: e.playerId,
             text: (e.answer!.value as { kind: 'text'; text: string }).text,
-            ...(showNames ? { nickname: e.nickname } : {}),
+            ...(showNames ? { nickname: e.nickname, avatarEmoji: e.avatarEmoji, color: e.color } : {}),
           })),
         };
       }
@@ -276,16 +284,16 @@ export function buildResults(
         median: round1(median(values)),
       };
       if (showNames) {
-        const groups = new Map<number, string[]>();
+        const groups = new Map<number, Voter[]>();
         for (const e of sortedByName) {
           if (!e.answer || e.answer.value.kind !== 'number') continue;
           const v = e.answer.value.value;
           if (!groups.has(v)) groups.set(v, []);
-          groups.get(v)!.push(e.nickname);
+          groups.get(v)!.push(toVoter(e));
         }
         base.voterGroups = [...groups.entries()]
           .sort((a, b) => a[0] - b[0])
-          .map(([v, names]) => ({ label: `${v}${q.config.unit ? ' ' + q.config.unit : ''}`, nicknames: names }));
+          .map(([v, voters]) => ({ label: `${v}${q.config.unit ? ' ' + q.config.unit : ''}`, voters }));
         base.noAnswer = noAnswer;
       }
       break;
@@ -303,9 +311,9 @@ export function buildResults(
       if (showNames) {
         base.voterGroups = counts.map((c) => ({
           label: `${c.value}`,
-          nicknames: sortedByName
+          voters: sortedByName
             .filter((e) => e.answer && e.answer.value.kind === 'number' && e.answer.value.value === c.value)
-            .map((e) => e.nickname),
+            .map(toVoter),
         }));
         base.noAnswer = noAnswer;
       }
@@ -320,14 +328,14 @@ function groupCorrectIncorrect(
   entries: RevealEntry[],
   grade: (a: RecordedAnswer | null) => { correct: boolean | null },
 ): VoterGroup[] {
-  const correct: string[] = [];
-  const incorrect: string[] = [];
+  const correct: Voter[] = [];
+  const incorrect: Voter[] = [];
   for (const e of entries) {
     if (!e.answer) continue;
-    (grade(e.answer).correct === true ? correct : incorrect).push(e.nickname);
+    (grade(e.answer).correct === true ? correct : incorrect).push(toVoter(e));
   }
   return [
-    { label: 'Correct', nicknames: correct, correct: true },
-    { label: 'Incorrect', nicknames: incorrect, correct: false },
+    { label: 'Correct', voters: correct, correct: true },
+    { label: 'Incorrect', voters: incorrect, correct: false },
   ];
 }

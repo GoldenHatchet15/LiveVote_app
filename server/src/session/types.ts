@@ -56,6 +56,8 @@ export interface RecordedAnswer {
 export interface RuntimePlayer {
   id: string;
   nickname: string;
+  avatarEmoji: string;
+  color: string;
   reconnectToken: string;
   score: number;
   streak: number;

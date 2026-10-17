@@ -145,6 +145,8 @@ export function registerSocketHandlers(io: TypedServer): void {
               playerId: existing.id,
               reconnectToken: existing.reconnectToken,
               nickname: existing.nickname,
+              avatarEmoji: existing.avatarEmoji,
+              color: existing.color,
               snapshot: engine.playerSnapshot(existing.id),
             });
           }
@@ -167,7 +169,12 @@ export function registerSocketHandlers(io: TypedServer): void {
         }
 
         const token = reconnectToken();
-        const { id } = await sessionManager.createPlayer(engine, check.nickname, token);
+        const { id, avatarEmoji, color } = await sessionManager.createPlayer(
+          engine,
+          check.nickname,
+          token,
+          payload.avatarEmoji,
+        );
         bindPlayerSocket(socket, engine.sessionId, id);
         engine.announcePlayerJoined(id);
 
@@ -176,6 +183,8 @@ export function registerSocketHandlers(io: TypedServer): void {
           playerId: id,
           reconnectToken: token,
           nickname: check.nickname,
+          avatarEmoji,
+          color,
           snapshot: engine.playerSnapshot(id),
         });
       } catch (err) {

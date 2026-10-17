@@ -255,17 +255,22 @@ export class SessionManager {
     engine: SessionEngine,
     nickname: string,
     reconnectToken: string,
-  ): Promise<{ id: string }> {
+    requestedAvatar?: string,
+  ): Promise<{ id: string; avatarEmoji: string; color: string }> {
+    const avatarEmoji = engine.resolveAvatar(requestedAvatar);
+    const color = engine.assignColor();
     const row = await prisma.player.create({
       data: {
         sessionId: engine.sessionId,
         nickname,
+        avatarEmoji,
+        color,
         reconnectToken,
         connected: true,
       },
     });
-    engine.addPlayer({ id: row.id, nickname, reconnectToken });
-    return { id: row.id };
+    engine.addPlayer({ id: row.id, nickname, reconnectToken, avatarEmoji, color });
+    return { id: row.id, avatarEmoji, color };
   }
 
   setConnected(engine: SessionEngine, playerId: string, connected: boolean): void {

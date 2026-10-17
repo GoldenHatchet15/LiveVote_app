@@ -252,6 +252,32 @@ times and points.
 
 ---
 
+## Player avatars and colours
+
+When joining, each player enters a nickname and picks an **emoji avatar** from a
+curated grid of **30** friendly emojis (animals, food, objects — no faces,
+flags, or hands), or hits **Random**. Only the curated list is accepted
+(validated server-side). Each player is also given a **colour** from a palette of
+**16** distinct colours, assigned **round-robin** as players join so nearby
+players look different; colours repeat only once the palette is exhausted.
+
+- **Name tags** are pills — emoji + nickname on the player's colour, with a
+  border and automatic (WCAG AA) text colour, so they never read as an answer
+  tile. They appear in the **host lobby**, the **reveal** screens (with
+  show-voter-names on), the **leaderboard** and **podium**, and on the
+  **player's own phone** header.
+- **Avatars are unique** within a session while unused ones remain; if everyone's
+  in and the pool is exhausted, duplicates are allowed.
+- **Reconnecting keeps** the same emoji and colour; a **kicked** player frees
+  their emoji back into the pool.
+- The **CSV export** includes each player's emoji and colour.
+
+**Emoji artwork:** rendered with [Twemoji](https://github.com/twitter/twemoji)
+for identical appearance on the projector and every phone. Twemoji graphics are
+© Twitter, Inc. and other contributors, licensed under
+**[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. If an emoji asset
+can't be loaded, the native glyph is shown instead.
+
 ## Project layout
 
 ```

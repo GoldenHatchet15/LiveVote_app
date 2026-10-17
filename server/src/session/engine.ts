@@ -1,8 +1,11 @@
 import {
+  AVATAR_EMOJIS,
   computeScore,
   ErrorCodes,
   gradeAnswer,
+  isValidAvatar,
   LATE_ANSWER_GRACE_MS,
+  PLAYER_COLORS,
   toPublicConfig,
   type AnswerValue,
   type HostSnapshot,
@@ -122,6 +125,8 @@ export class SessionEngine {
   private timerHandle: unknown = null;
   /** Points each player gained on the most recently revealed question. */
   private lastGain = new Map<string, number>();
+  /** Monotonic cursor so colours are assigned round-robin as players join. */
+  private colorCursor = 0;
 
   constructor(opts: EngineOptions) {
     this.sessionId = opts.sessionId;
@@ -153,6 +158,8 @@ export class SessionEngine {
     return this.activePlayers().map((p) => ({
       playerId: p.id,
       nickname: p.nickname,
+      avatarEmoji: p.avatarEmoji,
+      color: p.color,
       answer: p.answers.get(q.id) ?? null,
     }));
   }
@@ -219,6 +226,8 @@ export class SessionEngine {
     id: string;
     nickname: string;
     reconnectToken: string;
+    avatarEmoji?: string;
+    color?: string;
     score?: number;
     streak?: number;
     kicked?: boolean;
@@ -231,6 +240,8 @@ export class SessionEngine {
     const player: RuntimePlayer = {
       id: p.id,
       nickname: p.nickname,
+      avatarEmoji: p.avatarEmoji ?? AVATAR_EMOJIS[0]!,
+      color: p.color ?? PLAYER_COLORS[0]!,
       reconnectToken: p.reconnectToken,
       score: p.score ?? 0,
       streak: p.streak ?? 0,
@@ -241,6 +252,27 @@ export class SessionEngine {
     };
     this.players.set(player.id, player);
     return player;
+  }
+
+  /** Round-robin colour so players who join near each other look different. */
+  assignColor(): string {
+    const color = PLAYER_COLORS[this.colorCursor % PLAYER_COLORS.length]!;
+    this.colorCursor += 1;
+    return color;
+  }
+
+  /**
+   * Resolve an avatar: keep the requested one if it's valid and still free;
+   * otherwise give an unused one; once all are taken, allow duplicates.
+   */
+  resolveAvatar(requested?: string): string {
+    const taken = new Set(
+      [...this.players.values()].filter((p) => !p.kicked).map((p) => p.avatarEmoji),
+    );
+    if (requested && isValidAvatar(requested) && !taken.has(requested)) return requested;
+    const free = AVATAR_EMOJIS.filter((e) => !taken.has(e));
+    if (free.length > 0) return free[Math.floor(Math.random() * free.length)]!;
+    return requested && isValidAvatar(requested) ? requested : AVATAR_EMOJIS[0]!;
   }
 
   findByToken(token: string): RuntimePlayer | undefined {
@@ -269,6 +301,8 @@ export class SessionEngine {
       .map((p) => ({
         id: p.id,
         nickname: p.nickname,
+        avatarEmoji: p.avatarEmoji,
+        color: p.color,
         score: p.score,
         streak: p.streak,
         kicked: p.kicked,
@@ -547,6 +581,8 @@ export class SessionEngine {
     return sorted.map((p, i) => ({
       playerId: p.id,
       nickname: p.nickname,
+      avatarEmoji: p.avatarEmoji,
+      color: p.color,
       score: p.score,
       rank: i + 1,
       lastGain: this.lastGain.get(p.id) ?? 0,
@@ -592,6 +628,8 @@ export class SessionEngine {
       player: {
         id: p.id,
         nickname: p.nickname,
+        avatarEmoji: p.avatarEmoji,
+        color: p.color,
         score: p.score,
         streak: p.streak,
         kicked: p.kicked,
@@ -677,6 +715,8 @@ export class SessionEngine {
       totalPlayers: this.activePlayers().length,
       lastResult,
       showVoterNames: this.showVoterNames,
+      avatarEmoji: p?.avatarEmoji ?? AVATAR_EMOJIS[0]!,
+      color: p?.color ?? PLAYER_COLORS[0]!,
     };
   }
 }

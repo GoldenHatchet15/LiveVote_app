@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import type { LeaderboardEntry } from '@livevote/shared';
+import { Emoji } from '../../components/Emoji';
 
 export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
   const top = entries.slice(0, 5);
@@ -22,6 +23,9 @@ export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
           >
             <span className="w-10 font-display text-3xl font-black text-brand">
               {e.rank}
+            </span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: e.color }}>
+              <Emoji emoji={e.avatarEmoji} className="h-7 w-7" />
             </span>
             <span
               data-testid="lb-name"

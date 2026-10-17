@@ -58,10 +58,10 @@ describe('show voter names — ON', () => {
     const results = revealPayload(emitter);
     expect(results.voters).toBeDefined();
     const correctVoters = results.voters!.find((v) => v.optionId === 'q1a')!;
-    expect(correctVoters.nicknames.sort()).toEqual(['Ann', 'Bob']);
+    expect(correctVoters.voters.map((v) => v.nickname).sort()).toEqual(['Ann', 'Bob']);
     expect(results.correctOptionIds).toEqual(['q1a']);
     const wrongVoters = results.voters!.find((v) => v.optionId === 'q1b')!;
-    expect(wrongVoters.nicknames).toEqual(['Cy']);
+    expect(wrongVoters.voters.map((v) => v.nickname)).toEqual(['Cy']);
     expect(results.noAnswer).toEqual([]);
   });
 
@@ -73,7 +73,7 @@ describe('show voter names — ON', () => {
     engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     scheduler.advance(20_000); // Zed never answered -> timer reveal
     const results = revealPayload(emitter);
-    expect(results.noAnswer).toEqual(['Zed']);
+    expect(results.noAnswer!.map((v) => v.nickname)).toEqual(['Zed']);
   });
 
   it('works in POLL mode (names without correctness)', () => {
@@ -85,7 +85,7 @@ describe('show voter names — ON', () => {
     engine.submitAnswer('p1', 'p1', { kind: 'option', optionId: 'p1a' }); // -> reveal
     const results = revealPayload(emitter);
     expect(results.correctOptionIds).toEqual([]);
-    expect(results.voters!.find((v) => v.optionId === 'p1a')!.nicknames.sort()).toEqual([
+    expect(results.voters!.find((v) => v.optionId === 'p1a')!.voters.map((v) => v.nickname).sort()).toEqual([
       'Ann',
       'Bob',
     ]);

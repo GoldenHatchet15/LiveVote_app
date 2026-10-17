@@ -1,23 +1,21 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { PublicQuestion, QuestionResults, VoterGroup } from '@livevote/shared';
+import type { PublicQuestion, QuestionResults, Voter, VoterGroup } from '@livevote/shared';
 import { Shape, shapeColor } from '../../components/Shape';
+import { NameTag } from '../../components/NameTag';
 import { sound } from '../../lib/sound';
 
 const MAX_NAMES = 10;
 
-function VoterNames({ nicknames, tone }: { nicknames: string[]; tone: 'correct' | 'neutral' }) {
+function VoterNames({ voters }: { voters: Voter[] }) {
   const [expanded, setExpanded] = useState(false);
-  if (nicknames.length === 0) return <p className="mt-1 text-sm italic text-white/30">No one</p>;
-  const shown = expanded ? nicknames : nicknames.slice(0, MAX_NAMES);
-  const hidden = nicknames.length - shown.length;
-  const chip = tone === 'correct' ? 'bg-shape-green/25 text-white' : 'bg-white/10 text-white/80';
+  if (voters.length === 0) return <p className="mt-1 text-sm italic text-white/30">No one</p>;
+  const shown = expanded ? voters : voters.slice(0, MAX_NAMES);
+  const hidden = voters.length - shown.length;
   return (
-    <div data-testid="voter-names" className="mt-1 flex max-h-28 flex-wrap gap-1.5 overflow-auto">
-      {shown.map((n, i) => (
-        <span key={`${n}-${i}`} className={`rounded-lg px-2 py-0.5 text-sm font-medium ${chip}`}>
-          {n}
-        </span>
+    <div data-testid="voter-names" className="mt-1 flex max-h-28 flex-wrap items-center gap-1.5 overflow-auto">
+      {shown.map((v, i) => (
+        <NameTag key={`${v.nickname}-${i}`} nickname={v.nickname} avatarEmoji={v.avatarEmoji} color={v.color} size="sm" />
       ))}
       {hidden > 0 && (
         <button
@@ -28,7 +26,7 @@ function VoterNames({ nicknames, tone }: { nicknames: string[]; tone: 'correct' 
           +{hidden} more
         </button>
       )}
-      {expanded && nicknames.length > MAX_NAMES && (
+      {expanded && voters.length > MAX_NAMES && (
         <button
           className="rounded-lg bg-white/5 px-2 py-0.5 text-sm font-semibold text-white/60 hover:bg-white/15"
           onClick={() => setExpanded(false)}
@@ -50,7 +48,7 @@ function VoterGroupList({ groups }: { groups: VoterGroup[] }) {
           >
             {g.label}
           </span>
-          <VoterNames nicknames={g.nicknames} tone={g.correct ? 'correct' : 'neutral'} />
+          <VoterNames voters={g.voters} />
         </div>
       ))}
     </div>
@@ -120,7 +118,7 @@ function OptionBars({
   const correct = new Set(results.correctOptionIds);
   const isQuiz = results.mode === 'QUIZ';
   const maxCount = Math.max(1, ...results.tallies.map((t) => t.count));
-  const votersByOption = new Map((results.voters ?? []).map((v) => [v.optionId, v.nicknames]));
+  const votersByOption = new Map((results.voters ?? []).map((v) => [v.optionId, v.voters]));
   return (
     <>
       {question.options.map((opt) => {
@@ -172,7 +170,7 @@ function OptionBars({
             </div>
             {showNames && (
               <div className="pl-[4.5rem] pr-24">
-                <VoterNames nicknames={votersByOption.get(opt.id) ?? []} tone={isQuiz && isCorrect ? 'correct' : 'neutral'} />
+                <VoterNames voters={votersByOption.get(opt.id) ?? []} />
               </div>
             )}
           </div>
@@ -181,7 +179,7 @@ function OptionBars({
       {showNames && results.noAnswer && results.noAnswer.length > 0 && (
         <div data-testid="reveal-no-answer" className="pl-[4.5rem] pr-24 text-white/50">
           <span className="text-sm font-semibold uppercase tracking-wide">No answer</span>
-          <VoterNames nicknames={results.noAnswer} tone="neutral" />
+          <VoterNames voters={results.noAnswer} />
         </div>
       )}
     </>
@@ -266,7 +264,11 @@ function OpenEndedView({
       {cards.map((c) => (
         <div key={c.id} data-testid="answer-card" className="group relative rounded-2xl bg-white/10 p-4 text-white">
           <p className="pr-8">{c.text}</p>
-          {c.nickname && <p className="mt-2 text-sm font-semibold text-white/50">— {c.nickname}</p>}
+          {c.nickname && c.avatarEmoji && c.color && (
+            <div className="mt-2">
+              <NameTag nickname={c.nickname} avatarEmoji={c.avatarEmoji} color={c.color} size="sm" />
+            </div>
+          )}
           <button
             data-testid="hide-response"
             title="Hide this response"

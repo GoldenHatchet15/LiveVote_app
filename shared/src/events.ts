@@ -31,6 +31,8 @@ export interface Ack {
 export interface JoinRequest {
   pin: string;
   nickname: string;
+  /** Chosen emoji avatar (from the curated list). Validated server-side. */
+  avatarEmoji?: string;
   /** Present when rejoining after a refresh/disconnect. */
   reconnectToken?: string;
 }
@@ -54,6 +56,9 @@ export interface PlayerSnapshot {
   lastResult: PlayerResult | null;
   /** Drives the "your name will be shown" transparency notice only. */
   showVoterNames: boolean;
+  /** This player's assigned avatar + colour (echoed for their own header). */
+  avatarEmoji: string;
+  color: string;
 }
 
 export type JoinResponse =
@@ -62,6 +67,8 @@ export type JoinResponse =
       playerId: string;
       reconnectToken: string;
       nickname: string;
+      avatarEmoji: string;
+      color: string;
       snapshot: PlayerSnapshot;
     }
   | { ok: false; code: string; message: string };

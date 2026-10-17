@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import type { PlayerSummary } from '@livevote/shared';
+import { NameTag } from '../../components/NameTag';
 
 export function Lobby({
   pin,
@@ -84,9 +85,8 @@ export function Lobby({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.4, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 500, damping: 24 }}
-              className="rounded-xl bg-white/15 px-4 py-2 text-xl font-semibold text-white"
             >
-              {p.nickname}
+              <NameTag nickname={p.nickname} avatarEmoji={p.avatarEmoji} color={p.color} size="lg" />
             </motion.span>
           ))}
         </AnimatePresence>

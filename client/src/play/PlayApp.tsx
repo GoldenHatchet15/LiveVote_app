@@ -1,9 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { NICKNAME_MAX, PIN_LENGTH, type PublicQuestion } from '@livevote/shared';
+import { AVATAR_EMOJIS, NICKNAME_MAX, PIN_LENGTH, type PublicQuestion } from '@livevote/shared';
 import { Shape, shapeColor } from '../components/Shape';
+import { Emoji } from '../components/Emoji';
+import { NameTag } from '../components/NameTag';
 import { QuestionInput } from './QuestionInput';
 import { usePlaySession, type PlayState } from './usePlaySession';
+
+function randomAvatar(): string {
+  return AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)]!;
+}
 
 export function PlayApp() {
   const [params] = useSearchParams();
@@ -26,10 +32,15 @@ export function PlayApp() {
             Your name will be shown with your answer.
           </div>
         )}
+      {state.phase !== 'join' && state.nickname && (
+        <div className="flex items-center justify-center gap-2 bg-white/90 py-1.5 shadow-sm">
+          <NameTag nickname={state.nickname} avatarEmoji={state.avatarEmoji} color={state.color} />
+        </div>
+      )}
       {state.phase === 'join' && (
         <JoinScreen initialPin={initialPin} state={state} onJoin={join} />
       )}
-      {state.phase === 'lobby' && <Centered title="You’re in! 🎉" subtitle={`${state.nickname} · look at the screen`} />}
+      {state.phase === 'lobby' && <Centered title="You’re in! 🎉" subtitle="Look at the screen" />}
       {state.phase === 'question' && state.question && (
         <QuestionInput question={state.question} onAnswer={answer} />
       )}
@@ -84,14 +95,15 @@ function JoinScreen({
 }: {
   initialPin: string;
   state: PlayState;
-  onJoin: (pin: string, nickname: string) => void;
+  onJoin: (pin: string, nickname: string, avatarEmoji: string) => void;
 }) {
   const [pin, setPin] = useState(initialPin);
   const [nickname, setNickname] = useState('');
+  const [avatar, setAvatar] = useState<string>(() => randomAvatar());
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    onJoin(pin, nickname);
+    onJoin(pin, nickname, avatar);
   }
 
   return (
@@ -131,6 +143,33 @@ function JoinScreen({
           maxLength={NICKNAME_MAX}
           onChange={(e) => setNickname(e.target.value)}
         />
+
+        <div className="mt-4 flex items-center justify-between">
+          <label className="label mb-0">Pick an avatar</label>
+          <button
+            type="button"
+            data-testid="avatar-random"
+            className="btn-ghost px-2 py-1 text-sm"
+            onClick={() => setAvatar(randomAvatar())}
+          >
+            🎲 Random
+          </button>
+        </div>
+        <div className="mt-1 grid max-h-40 grid-cols-6 gap-1 overflow-auto rounded-xl bg-black/5 p-2">
+          {AVATAR_EMOJIS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              data-testid={`avatar-${e}`}
+              onClick={() => setAvatar(e)}
+              className="flex aspect-square items-center justify-center rounded-lg transition"
+              style={{ outline: avatar === e ? '3px solid #e4002b' : 'none', background: avatar === e ? '#ffe0e3' : 'transparent' }}
+            >
+              <Emoji emoji={e} className="h-7 w-7" />
+            </button>
+          ))}
+        </div>
+
         {state.error && <p className="mt-3 text-center text-sm font-semibold text-brand">{state.error}</p>}
         <button
           className="btn-primary mt-5 w-full py-4 text-xl"

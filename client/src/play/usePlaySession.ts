@@ -26,6 +26,8 @@ export interface PlayState {
   joinBusy: boolean;
   pin: string;
   nickname: string;
+  avatarEmoji: string;
+  color: string;
   playerId: string | null;
   question: PublicQuestion | null;
   serverNow: number | null;
@@ -79,6 +81,8 @@ const initial: PlayState = {
   joinBusy: false,
   pin: '',
   nickname: '',
+  avatarEmoji: '',
+  color: '',
   playerId: null,
   question: null,
   serverNow: null,
@@ -131,17 +135,19 @@ export function usePlaySession(initialPin: string) {
         rank: snap.rank,
         totalPlayers: snap.totalPlayers,
         showVoterNames: snap.showVoterNames,
+        avatarEmoji: snap.avatarEmoji,
+        color: snap.color,
       });
     },
     [patch],
   );
 
   const emitJoin = useCallback(
-    (pin: string, nickname: string, token?: string) => {
+    (pin: string, nickname: string, token?: string, avatarEmoji?: string) => {
       const socket = socketRef.current;
       if (!socket) return;
       patch({ joinBusy: true });
-      socket.emit('player:join', { pin, nickname, reconnectToken: token }, (res: JoinResponse) => {
+      socket.emit('player:join', { pin, nickname, avatarEmoji, reconnectToken: token }, (res: JoinResponse) => {
         patch({ joinBusy: false });
         if (!res.ok) {
           if (res.code === 'PLAYER_KICKED') {
@@ -166,7 +172,14 @@ export function usePlaySession(initialPin: string) {
         };
         credsRef.current = creds;
         saveCreds(creds);
-        patch({ error: null, pin, nickname: res.nickname, playerId: res.playerId });
+        patch({
+          error: null,
+          pin,
+          nickname: res.nickname,
+          avatarEmoji: res.avatarEmoji,
+          color: res.color,
+          playerId: res.playerId,
+        });
         applySnapshot(res.snapshot);
       });
     },
@@ -233,9 +246,9 @@ export function usePlaySession(initialPin: string) {
   }, [patch, emitJoin]);
 
   const join = useCallback(
-    (pin: string, nickname: string) => {
+    (pin: string, nickname: string, avatarEmoji: string) => {
       patch({ error: null, pin, nickname });
-      emitJoin(pin, nickname);
+      emitJoin(pin, nickname, undefined, avatarEmoji);
     },
     [emitJoin, patch],
   );

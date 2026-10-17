@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { LeaderboardEntry } from '@livevote/shared';
 import { Confetti } from '../../components/Confetti';
+import { Emoji } from '../../components/Emoji';
 import { sound } from '../../lib/sound';
 
 const PODIUM = [
@@ -65,6 +66,12 @@ export function Ended({
               transition={{ delay: (3 - place) * 0.25, type: 'spring', stiffness: 300, damping: 26 }}
               className="flex w-40 flex-col items-center"
             >
+              <span
+                className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+                style={{ backgroundColor: entry.color }}
+              >
+                <Emoji emoji={entry.avatarEmoji} className="h-11 w-11" />
+              </span>
               <span className="mb-2 max-w-full truncate text-2xl font-bold text-white">
                 {entry.nickname}
               </span>
@@ -100,6 +107,9 @@ export function Ended({
               className="flex items-center gap-3 border-b border-white/5 px-4 py-2 text-white/80 last:border-0"
             >
               <span className="w-8 font-bold text-white/50">{e.rank}</span>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: e.color }}>
+                <Emoji emoji={e.avatarEmoji} className="h-5 w-5" />
+              </span>
               <span className="flex-1 truncate">{e.nickname}</span>
               <span className="font-bold">{e.score}</span>
             </div>

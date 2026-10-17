@@ -35,6 +35,8 @@ describe('results CSV export (M4)', () => {
     // Header + 2 players * 2 questions.
     expect(rows[0]).toEqual([
       'player',
+      'avatar',
+      'color',
       'final_score',
       'question_number',
       'question_text',
@@ -47,7 +49,7 @@ describe('results CSV export (M4)', () => {
     ]);
     expect(rows).toHaveLength(1 + 4);
 
-    const idx = { player: 0, score: 1, qnum: 2, qtext: 3, mode: 4, sel: 6, correct: 7, points: 9 };
+    const idx = { player: 0, score: 3, qnum: 4, qtext: 5, mode: 6, sel: 8, correct: 9, points: 11 };
     const body = rows.slice(1);
     const annQ1 = body.find((r) => r[idx.player] === 'Ann' && r[idx.qnum] === '1')!;
     const bobQ1 = body.find((r) => r[idx.player] === 'Bob' && r[idx.qnum] === '1')!;

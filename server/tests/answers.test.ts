@@ -17,8 +17,10 @@ function entry(nick: string, value: AnswerValue | null, hidden = false): RevealE
   const answer: RecordedAnswer | null = value
     ? { value, responseMs: 0, pointsAwarded: 0, correct: null, hidden }
     : null;
-  return { playerId: nick, nickname: nick, answer };
+  return { playerId: nick, nickname: nick, avatarEmoji: '🐶', color: '#0d9488', answer };
 }
+
+const names = (voters?: { nickname: string }[]) => (voters ?? []).map((v) => v.nickname);
 
 describe('prepareAnswer rejects malformed answers per type', () => {
   it('MC: wrong kind / unknown option', () => {
@@ -89,7 +91,7 @@ describe('buildResults — type-specific reveal payloads', () => {
 
     const on = buildResults(question, entries, true);
     const correctGroup = on.voterGroups?.find((g) => g.correct);
-    expect(correctGroup?.nicknames).toEqual(['Ann']);
+    expect(names(correctGroup?.voters)).toEqual(['Ann']);
   });
 
   it('OPEN_ENDED word cloud counts; hidden excluded', () => {
@@ -137,8 +139,8 @@ describe('buildResults — type-specific reveal payloads', () => {
     ];
     const r = buildResults(question, entries, true);
     expect(r.ordering?.correctOrder.map((o) => o.optionId)).toEqual(['a', 'b', 'c']);
-    expect(r.voterGroups?.find((g) => g.correct)?.nicknames).toEqual(['Ann']);
-    expect(r.voterGroups?.find((g) => !g.correct)?.nicknames).toEqual(['Bob']);
+    expect(names(r.voterGroups?.find((g) => g.correct)?.voters)).toEqual(['Ann']);
+    expect(names(r.voterGroups?.find((g) => !g.correct)?.voters)).toEqual(['Bob']);
   });
 });
 

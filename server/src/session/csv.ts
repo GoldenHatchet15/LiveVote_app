@@ -34,6 +34,8 @@ function renderResponse(q: LoadedQuestion, value: AnswerValue | null): string {
 export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
   const header = [
     'player',
+    'avatar',
+    'color',
     'final_score',
     'question_number',
     'question_text',
@@ -65,6 +67,8 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
       lines.push(
         [
           esc(player.nickname),
+          esc(player.avatarEmoji),
+          esc(player.color),
           esc(player.score),
           esc(q.order + 1),
           esc(q.text),
