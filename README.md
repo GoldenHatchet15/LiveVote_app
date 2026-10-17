@@ -209,6 +209,36 @@ effect from the next reveal, or immediately if the host is already on a reveal.
 > Players never receive other players' answers, and the CSV export (which
 > already contains per-player answers for the admin) is unchanged.
 
+### Question types
+
+Each question has a **type** (picked when you add it). Only its relevant fields
+show in the builder, and the preview renders exactly what players will see.
+
+| Type | Modes | Player input | Quiz scoring | Reveal |
+| --- | --- | --- | --- | --- |
+| **Multiple choice** | Poll + Quiz | 2–4 options, one answer | correct option | bar chart |
+| **Multiple select** | Poll + Quiz | 2–6 options, pick several → Submit | full points for the **exact** correct set | bar chart |
+| **True / False** | Poll + Quiz | two big buttons (labels localizable) | correct option | bar chart |
+| **Type answer** | Quiz only | short text (≤40) | speed-based when it matches an accepted answer | accepted answer(s), % correct, common wrong answers |
+| **Open ended** | Poll only | free text (≤120) | — | **word cloud** or **answer wall** (host can hide any response) |
+| **Slider** | Poll + Quiz | drag a number | full within tolerance, scaled down to 2× tolerance, 0 beyond | distribution on a number line (correct marked / average) |
+| **Ordering** | Quiz only | drag/tap 3–5 items into order | full points for the **exact** order | correct order + % correct |
+| **Rating** | Poll only | 1–5 stars or 1–10 | — | distribution + average |
+
+- **Type-answer matching** ignores case, extra spaces and accents
+  (`canción` = `cancion`); a per-question **exact match** toggle turns that off.
+- **Slider scoring**: full `basePoints` within `±tolerance`, then a linear
+  falloff to `0` at `2×tolerance`, times the speed factor; the speed bonus still
+  applies.
+- **Open-ended** responses are HTML-sanitized and profanity-filtered on submit;
+  hidden responses are excluded from the word cloud and the wall.
+- **Changing a question's type** warns before discarding incompatible fields.
+- **Show voter names** works with every type — names appear under each option,
+  grouped under *Correct* / each common wrong answer / each rating value /
+  *Correct*-*Incorrect*, by closest guess (slider), or on each answer-wall card
+  (the word cloud stays anonymous).
+- The seed includes a **"Mixed Question Types"** set with one of every type.
+
 **Scoring (Quiz mode).** `points = round(1000 × (1 − (responseTime / timeLimit) / 2))`,
 so a correct answer is worth 500–1000 depending on speed (a flat 1000 for
 untimed questions). `DOUBLE` doubles the base; `NONE` awards 0. A streak adds

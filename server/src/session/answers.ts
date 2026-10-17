@@ -13,6 +13,7 @@ import {
   type QuestionResults,
   type VoterGroup,
 } from '@livevote/shared';
+import { isProfane } from '../util/nickname.js';
 import type { LoadedQuestion, RecordedAnswer } from './types.js';
 
 export interface ValidationError {
@@ -72,6 +73,10 @@ export function prepareAnswer(q: LoadedQuestion, value: AnswerValue): PreparedAn
       const text = sanitizeText(value.text);
       if (text.length === 0 || text.length > OPEN_ENDED_MAX) {
         return err(ErrorCodes.OPTION_INVALID, `Answer must be 1–${OPEN_ENDED_MAX} characters`);
+      }
+      // Open responses are shown on the projector — filter profanity on submit.
+      if (isProfane(text)) {
+        return err(ErrorCodes.NICKNAME_PROFANE, 'Please keep it friendly');
       }
       return { ok: true, value: { kind: 'text', text } };
     }

@@ -105,6 +105,67 @@ describe('JSON export/import round-trip', () => {
   });
 });
 
+describe('per-type validation', () => {
+  const base = (over: Record<string, unknown>) => ({
+    title: 'T',
+    questions: [
+      {
+        text: 'Q',
+        mode: 'QUIZ',
+        timeLimitSec: 20,
+        points: 'STANDARD',
+        options: [],
+        correctOptionIndices: [],
+        config: {},
+        ...over,
+      },
+    ],
+  });
+
+  it('TYPE_ANSWER needs accepted answers and is quiz-only', () => {
+    expect(questionSetInputSchema.safeParse(base({ type: 'TYPE_ANSWER', config: {} })).success).toBe(false);
+    expect(
+      questionSetInputSchema.safeParse(base({ type: 'TYPE_ANSWER', config: { acceptedAnswers: ['hi'] } })).success,
+    ).toBe(true);
+    expect(
+      questionSetInputSchema.safeParse(base({ type: 'TYPE_ANSWER', mode: 'POLL', config: { acceptedAnswers: ['hi'] } })).success,
+    ).toBe(false);
+  });
+
+  it('SLIDER needs min<max and an in-range correct value (quiz)', () => {
+    expect(questionSetInputSchema.safeParse(base({ type: 'SLIDER', config: { min: 10, max: 5, correctValue: 7 } })).success).toBe(false);
+    expect(questionSetInputSchema.safeParse(base({ type: 'SLIDER', config: { min: 0, max: 10, correctValue: 50 } })).success).toBe(false);
+    expect(questionSetInputSchema.safeParse(base({ type: 'SLIDER', config: { min: 0, max: 10, correctValue: 5 } })).success).toBe(true);
+  });
+
+  it('ORDERING needs 3–5 items', () => {
+    expect(questionSetInputSchema.safeParse(base({ type: 'ORDERING', options: [{ text: 'a' }, { text: 'b' }] })).success).toBe(false);
+    expect(
+      questionSetInputSchema.safeParse(base({ type: 'ORDERING', options: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] })).success,
+    ).toBe(true);
+  });
+
+  it('RATING is poll-only with scale 5 or 10', () => {
+    expect(questionSetInputSchema.safeParse(base({ type: 'RATING', mode: 'POLL', points: 'NONE', config: { scale: 7 } })).success).toBe(false);
+    expect(questionSetInputSchema.safeParse(base({ type: 'RATING', mode: 'POLL', points: 'NONE', config: { scale: 10 } })).success).toBe(true);
+  });
+
+  it('MULTI_SELECT allows 2–6 options with multiple correct', () => {
+    expect(
+      questionSetInputSchema.safeParse(
+        base({ type: 'MULTI_SELECT', options: [{ text: 'a' }, { text: 'b' }, { text: 'c' }], correctOptionIndices: [0, 2] }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('export/import round-trips a SLIDER config', () => {
+    const parsed = questionSetInputSchema.parse(base({ type: 'SLIDER', config: { min: 0, max: 100, step: 5, unit: 'kg', correctValue: 40, tolerance: 3 } }));
+    const envelope = { schemaVersion: 1 as const, exportedAt: new Date().toISOString(), set: parsed };
+    const back = questionSetExportSchema.parse(JSON.parse(JSON.stringify(envelope)));
+    expect(back.set.questions[0]!.config).toEqual(parsed.questions[0]!.config);
+  });
+});
+
 describe('invalid JSON import fails gracefully', () => {
   it('rejects an envelope with the wrong schemaVersion', () => {
     const r = questionSetExportSchema.safeParse({
