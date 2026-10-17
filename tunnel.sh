@@ -25,7 +25,7 @@ SUBDOMAIN="${SUBDOMAIN:-livevote}"
 HOSTNAME_FQDN="${SUBDOMAIN}.${DOMAIN}"
 TUNNEL_NAME="${TUNNEL_NAME:-livevote}"
 APP_SERVICE="http://app:3000"
-COMPOSE=(docker compose -f docker-compose.prod.yml)
+COMPOSE=()   # resolved in STEP 0 (docker compose v2, or docker-compose v1)
 ENV_FILE=".env"
 API="https://api.cloudflare.com/client/v4"
 
@@ -61,8 +61,27 @@ cf() {
 bold "STEP 0 — Preflight"
 command -v node >/dev/null   || die "node is required"
 command -v curl >/dev/null   || die "curl is required"
-docker compose version >/dev/null 2>&1 || die "Docker Compose is required (and the Docker daemon must be running)"
-ok "docker, node, curl present"
+command -v docker >/dev/null || die "Docker is not installed. See: https://docs.docker.com/engine/install/ubuntu/"
+
+# Resolve Docker Compose: v2 plugin ('docker compose') preferred, v1 fallback.
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=(docker compose -f docker-compose.prod.yml)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE=(docker-compose -f docker-compose.prod.yml)
+else
+  die "Docker Compose v2 not found. Install the plugin:
+       sudo apt-get update && sudo apt-get install -y docker-compose-plugin
+     then verify:  docker compose version"
+fi
+
+# Daemon reachable (and usable without sudo)?
+if ! docker info >/dev/null 2>&1; then
+  die "Can't talk to the Docker daemon. Likely one of:
+       • daemon not running →  sudo systemctl enable --now docker
+       • your user not in the docker group →  sudo usermod -aG docker \$USER   (then log out/in, or: newgrp docker)
+     Verify with:  docker info"
+fi
+ok "docker ($(printf '%s ' "${COMPOSE[@]:0:1}")compose), node, curl present"
 
 if [ -z "${CF_API_TOKEN:-}" ]; then
   cat <<'EOF'
