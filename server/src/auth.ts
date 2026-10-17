@@ -16,11 +16,13 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 /**
- * Verify a password against a scrypt hash of the form `scrypt$<saltHex>$<hashHex>`.
+ * Verify a password against a scrypt hash of the form
+ * `scrypt:<saltHex>:<hashHex>` (legacy `$` delimiters are also accepted).
  * scrypt is a strong KDF built into Node (no native dependency).
  */
-function verifyScrypt(password: string, stored: string): boolean {
-  const parts = stored.split('$');
+export function verifyScrypt(password: string, stored: string): boolean {
+  // Accept ':' (preferred — Docker-Compose-safe) or legacy '$' separators.
+  const parts = stored.split(/[:$]/);
   if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
   const [, saltHex, hashHex] = parts;
   try {

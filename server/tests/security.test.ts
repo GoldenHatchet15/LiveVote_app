@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { randomBytes, scryptSync } from 'node:crypto';
 import type { Express } from 'express';
@@ -8,6 +8,7 @@ import {
   signAdminToken,
   verifyAdminToken,
   verifyAdminPassword,
+  verifyScrypt,
 } from '../src/auth.js';
 import { loginLimiter } from '../src/routes/auth.js';
 import { resolveClientIp } from '../src/util/clientIp.js';
@@ -109,16 +110,15 @@ describe('H5 — malformed socket answers are rejected, not thrown', () => {
 });
 
 describe('M1 — admin password supports a scrypt hash', () => {
-  it('verifies against ADMIN_PASSWORD_HASH', async () => {
+  it('verifies a scrypt hash with ":" and legacy "$" delimiters', () => {
     const salt = randomBytes(16);
     const hash = scryptSync('s3cret-pw', salt, 64);
-    process.env.ADMIN_PASSWORD_HASH = `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
-    vi.resetModules();
-    const auth = await import('../src/auth.js');
-    expect(auth.verifyAdminPassword('s3cret-pw')).toBe(true);
-    expect(auth.verifyAdminPassword('wrong')).toBe(false);
-    delete process.env.ADMIN_PASSWORD_HASH;
-    vi.resetModules();
+    for (const sep of [':', '$']) {
+      const stored = `scrypt${sep}${salt.toString('hex')}${sep}${hash.toString('hex')}`;
+      expect(verifyScrypt('s3cret-pw', stored)).toBe(true);
+      expect(verifyScrypt('wrong', stored)).toBe(false);
+    }
+    expect(verifyScrypt('x', 'not-a-hash')).toBe(false);
   });
 
   it('(default) still verifies a plaintext dev password without hashing', () => {

@@ -10,4 +10,5 @@ if (!password) {
 }
 const salt = randomBytes(16);
 const hash = scryptSync(password, salt, 64);
-process.stdout.write(`scrypt$${salt.toString('hex')}$${hash.toString('hex')}\n`);
+// ':' delimiter (not '$') so the value survives Docker Compose interpolation.
+process.stdout.write(`scrypt:${salt.toString('hex')}:${hash.toString('hex')}\n`);
