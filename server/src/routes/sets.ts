@@ -7,6 +7,7 @@ import {
 } from '@livevote/shared';
 import { requireAdmin } from '../auth.js';
 import { prisma } from '../db.js';
+import { env } from '../env.js';
 import { sessionManager } from '../session/manager.js';
 import { questionsCreateInput, serializeSet, toInput } from './serialize.js';
 
@@ -169,6 +170,11 @@ setsRouter.post('/import', async (req, res) => {
 
 // Start a session for a set.
 setsRouter.post('/:id/start', async (req, res) => {
+  // Cap concurrent sessions (M4).
+  if (sessionManager.activeSessionCount >= env.maxActiveSessions) {
+    res.status(503).json({ error: 'Too many active sessions — try again shortly' });
+    return;
+  }
   const engine = await sessionManager.createSession(req.params.id);
   if (!engine) {
     res.status(404).json({ error: 'Set not found' });

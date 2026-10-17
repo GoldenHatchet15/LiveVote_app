@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
+import helmet from 'helmet';
 import { Server as IOServer } from 'socket.io';
 import type {
   ClientToServerEvents,
@@ -46,8 +47,37 @@ export interface BuiltApp {
 
 export function buildApp(): BuiltApp {
   const app = express();
+
+  // Behind Cloudflare in production we read the real client IP from
+  // CF-Connecting-IP (see socket clientIp); trust exactly one proxy hop.
+  if (env.trustProxy) app.set('trust proxy', 1);
+
+  // Security headers (H1). CSP is tuned for the bundled app + Google Fonts +
+  // same-origin Socket.IO (ws/wss is covered by 'self').
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          ...(env.isProd ? { upgradeInsecureRequests: [] } : {}),
+        },
+      },
+      // Allow the bundled emoji SVGs / fonts to load without COEP friction.
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
   app.use(corsMiddleware);
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: '256kb' }));
 
   app.use('/api', apiRouter);
 
@@ -75,6 +105,9 @@ export function buildApp(): BuiltApp {
     SocketData
   >(server, {
     cors: { origin: env.corsOrigins, credentials: true },
+    // Answers are tiny; cap the per-message size to blunt abuse (M3).
+    maxHttpBufferSize: 16 * 1024,
+    pingTimeout: 20_000,
   });
 
   registerSocketHandlers(io);

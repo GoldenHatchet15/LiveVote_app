@@ -36,6 +36,11 @@ export function sanitizeText(s: string): string {
  * malformed shapes (wrong kind, unknown options, out-of-range numbers, etc.).
  */
 export function prepareAnswer(q: LoadedQuestion, value: AnswerValue): PreparedAnswer {
+  // Defensive guard (H5): the value comes straight off the socket and may be
+  // anything. Reject non-objects / missing discriminant before touching fields.
+  if (!value || typeof value !== 'object' || typeof (value as { kind?: unknown }).kind !== 'string') {
+    return err(ErrorCodes.OPTION_INVALID, 'Malformed answer');
+  }
   const optionIds = new Set(q.options.map((o) => o.id));
 
   switch (q.type) {
@@ -47,14 +52,18 @@ export function prepareAnswer(q: LoadedQuestion, value: AnswerValue): PreparedAn
       return { ok: true, value: { kind: 'option', optionId: value.optionId } };
     }
     case 'MULTI_SELECT': {
-      if (value.kind !== 'options') return err(ErrorCodes.OPTION_INVALID, 'Expected a set of options');
-      const ids = [...new Set(value.optionIds)];
+      if (value.kind !== 'options' || !Array.isArray(value.optionIds)) {
+        return err(ErrorCodes.OPTION_INVALID, 'Expected a set of options');
+      }
+      const ids = [...new Set(value.optionIds)].filter((id) => typeof id === 'string');
       if (ids.length === 0) return err(ErrorCodes.OPTION_INVALID, 'Pick at least one option');
       if (!ids.every((id) => optionIds.has(id))) return err(ErrorCodes.OPTION_INVALID, 'Unknown option');
       return { ok: true, value: { kind: 'options', optionIds: ids } };
     }
     case 'ORDERING': {
-      if (value.kind !== 'order') return err(ErrorCodes.OPTION_INVALID, 'Expected an ordering');
+      if (value.kind !== 'order' || !Array.isArray(value.order)) {
+        return err(ErrorCodes.OPTION_INVALID, 'Expected an ordering');
+      }
       const ids = value.order;
       if (ids.length !== q.options.length || new Set(ids).size !== ids.length || !ids.every((id) => optionIds.has(id))) {
         return err(ErrorCodes.OPTION_INVALID, 'Ordering must be a permutation of the items');

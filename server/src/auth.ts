@@ -1,9 +1,37 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import * as cookie from 'cookie';
 import { env } from './env.js';
 
 export const ADMIN_COOKIE = 'lv_admin';
+
+/** Server-side session lifetime; a cookie older than this is rejected even if
+ *  its signature is valid (H3 — the browser maxAge alone is not enforcement). */
+export const ADMIN_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+function constantTimeEquals(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
+/**
+ * Verify a password against a scrypt hash of the form `scrypt$<saltHex>$<hashHex>`.
+ * scrypt is a strong KDF built into Node (no native dependency).
+ */
+function verifyScrypt(password: string, stored: string): boolean {
+  const parts = stored.split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  const [, saltHex, hashHex] = parts;
+  try {
+    const salt = Buffer.from(saltHex!, 'hex');
+    const expected = Buffer.from(hashHex!, 'hex');
+    const actual = scryptSync(password, salt, expected.length);
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The cookie value is `issuedAt.signature`, where signature = HMAC(secret,
@@ -26,15 +54,22 @@ export function verifyAdminToken(token: string | undefined): boolean {
   const expected = createHmac('sha256', env.sessionSecret)
     .update(payload)
     .digest('hex');
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  if (!constantTimeEquals(sig, expected)) return false;
+  // Enforce server-side expiry (H3): reject stale or malformed timestamps.
+  const issuedAt = Number(payload);
+  if (!Number.isFinite(issuedAt)) return false;
+  const age = Date.now() - issuedAt;
+  if (age < -60_000 || age > ADMIN_SESSION_MAX_AGE_MS) return false;
+  return true;
 }
 
 export function verifyAdminPassword(password: string): boolean {
-  const a = Buffer.from(password);
-  const b = Buffer.from(env.adminPassword);
-  return a.length === b.length && timingSafeEqual(a, b);
+  if (typeof password !== 'string' || password.length === 0) return false;
+  // Prefer a hashed password (M1); fall back to a constant-time plaintext compare.
+  if (env.adminPasswordHash) {
+    return verifyScrypt(password, env.adminPasswordHash);
+  }
+  return constantTimeEquals(password, env.adminPassword);
 }
 
 export function adminCookieOptions(): cookie.CookieSerializeOptions {

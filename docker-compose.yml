@@ -9,16 +9,23 @@ services:
       PORT: 3000
       # SQLite file on the mounted volume so data survives restarts.
       DATABASE_URL: file:/app/data/livevote.db
-      # CHANGE THESE before any real/public use.
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
-      SESSION_SECRET: ${SESSION_SECRET:-dev-insecure-secret-change-me-0123456789abcdef}
-      # The URL players use to join (what the QR code encodes). For same-Wi-Fi
-      # play set this to your laptop's LAN IP; for Cloudflare Tunnel, the tunnel URL.
+      # Required — compose fails to start if these are not set in .env (H8).
+      # Use a hashed password (ADMIN_PASSWORD_HASH) in production; see DEPLOY.md.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env (long random string)}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DATA_RETENTION_DAYS: ${DATA_RETENTION_DAYS:-30}
     volumes:
       - livevote-data:/app/data
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
 
 volumes:
   livevote-data:

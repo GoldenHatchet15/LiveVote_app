@@ -8,10 +8,20 @@ import {
   signAdminToken,
   verifyAdminPassword,
 } from '../auth.js';
+import { RateLimiter } from '../util/rateLimiter.js';
+import { resolveClientIp } from '../util/clientIp.js';
 
 export const authRouter = Router();
 
+// Brute-force protection (H2): ~10 attempts then one more every ~10s, per IP.
+export const loginLimiter = new RateLimiter(10, 0.1);
+
 authRouter.post('/login', (req, res) => {
+  const ip = resolveClientIp(req.headers, req.socket.remoteAddress ?? undefined);
+  if (!loginLimiter.take(ip)) {
+    res.status(429).json({ error: 'Too many attempts — wait a moment and try again' });
+    return;
+  }
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Password required' });
@@ -21,6 +31,8 @@ authRouter.post('/login', (req, res) => {
     res.status(401).json({ error: 'Incorrect password' });
     return;
   }
+  // A correct password clears the attempt counter for this IP.
+  loginLimiter.reset(ip);
   res.setHeader(
     'Set-Cookie',
     cookie.serialize(ADMIN_COOKIE, signAdminToken(), adminCookieOptions()),

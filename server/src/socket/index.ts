@@ -8,10 +8,12 @@ import {
   type SocketData,
 } from '@livevote/shared';
 import { readAdminCookie } from '../auth.js';
+import { env } from '../env.js';
 import { sessionManager } from '../session/manager.js';
 import { validateNickname } from '../util/nickname.js';
 import { isValidPinFormat } from '../util/pin.js';
 import { RateLimiter } from '../util/rateLimiter.js';
+import { resolveClientIp } from '../util/clientIp.js';
 import { reconnectToken } from '../util/token.js';
 
 type TypedServer = Server<
@@ -32,9 +34,7 @@ type TypedSocket = Socket<
 const joinLimiter = new RateLimiter(100, 10);
 
 function clientIp(socket: TypedSocket): string {
-  const fwd = socket.handshake.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0]!.trim();
-  return socket.handshake.address;
+  return resolveClientIp(socket.handshake.headers, socket.handshake.address);
 }
 
 export function registerSocketHandlers(io: TypedServer): void {
@@ -159,6 +159,10 @@ export function registerSocketHandlers(io: TypedServer): void {
         if (engine.state !== 'LOBBY') {
           return ack({ ok: false, code: ErrorCodes.SESSION_NOT_JOINABLE, message: 'This game has already started' });
         }
+        // Cap players per session (M4).
+        if (engine.playerSummaries().length >= env.maxPlayersPerSession) {
+          return ack({ ok: false, code: ErrorCodes.SESSION_NOT_JOINABLE, message: 'This game is full' });
+        }
 
         const check = validateNickname(payload.nickname ?? '');
         if (!check.ok) {
@@ -193,19 +197,27 @@ export function registerSocketHandlers(io: TypedServer): void {
     });
 
     socket.on('player:answer', ({ questionId, value }, ack) => {
-      const { sessionId, playerId } = socket.data;
-      if (!sessionId || !playerId) {
-        return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Not in a game' });
+      if (typeof ack !== 'function') return; // malformed call — ignore
+      try {
+        const { sessionId, playerId } = socket.data;
+        if (!sessionId || !playerId) {
+          return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Not in a game' });
+        }
+        const engine = sessionManager.get(sessionId);
+        if (!engine) {
+          return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session ended' });
+        }
+        if (typeof questionId !== 'string') {
+          return ack({ ok: false, code: ErrorCodes.OPTION_INVALID, message: 'Malformed answer' });
+        }
+        const result = engine.submitAnswer(playerId, questionId, value);
+        if (!result.ok) {
+          return ack({ ok: false, code: result.code, message: result.message });
+        }
+        ack({ ok: true, acceptedValue: result.value.value });
+      } catch {
+        ack({ ok: false, code: ErrorCodes.INTERNAL, message: 'Could not submit' });
       }
-      const engine = sessionManager.get(sessionId);
-      if (!engine) {
-        return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session ended' });
-      }
-      const result = engine.submitAnswer(playerId, questionId, value);
-      if (!result.ok) {
-        return ack({ ok: false, code: result.code, message: result.message });
-      }
-      ack({ ok: true, acceptedValue: result.value.value });
     });
 
     // ---------------------------------------------------------- disconnect

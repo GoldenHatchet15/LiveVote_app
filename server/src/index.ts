@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { env } from './env.js';
 import { disconnectDb } from './db.js';
+import { startRetentionSweep } from './session/retention.js';
 
 const { server } = buildApp();
 
@@ -12,6 +13,9 @@ server.listen(env.port, () => {
   // eslint-disable-next-line no-console
   console.log(`Players join at: ${env.publicBaseUrl}/play`);
 });
+
+// Privacy: purge session data older than the retention window, daily (M6).
+startRetentionSweep();
 
 async function shutdown(signal: string): Promise<void> {
   // eslint-disable-next-line no-console

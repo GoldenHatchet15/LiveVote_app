@@ -3,8 +3,11 @@ import type { SessionEngine } from './engine.js';
 import type { LoadedQuestion, LoadedSet } from './types.js';
 
 function esc(value: string | number | boolean | null): string {
-  const s = value === null ? '' : String(value);
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  let s = value === null ? '' : String(value);
+  // Neutralize CSV/formula injection: a cell starting with =, +, -, @, tab or
+  // carriage return is treated as a formula by Excel/Sheets. Prefix with a quote.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
 

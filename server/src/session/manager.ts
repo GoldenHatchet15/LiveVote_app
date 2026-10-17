@@ -54,6 +54,11 @@ export class SessionManager {
     return this.entries.get(sessionId)?.engine;
   }
 
+  /** Number of sessions currently held in memory (for the active-session cap). */
+  get activeSessionCount(): number {
+    return this.entries.size;
+  }
+
   getSet(sessionId: string): LoadedSet | undefined {
     return this.entries.get(sessionId)?.set;
   }
