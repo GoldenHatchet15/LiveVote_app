@@ -52,7 +52,27 @@ Fill in `.env`:
 
 Leave `ADMIN_PASSWORD` blank when using the hash.
 
-## 2. Create the Cloudflare Tunnel (dashboard)
+## Automated path — `./tunnel.sh` (recommended)
+
+`tunnel.sh` does steps 1, 2 and "Run" below for you via the Cloudflare API:
+generates the secrets/hash into `.env`, creates (or reuses) the tunnel, wires
+`livevote.jrcodestudio.org` (ingress + DNS), writes `TUNNEL_TOKEN`, then builds
+and starts the stack and verifies the public URL.
+
+```bash
+# 1) Create a Cloudflare API token (one time) at
+#    https://dash.cloudflare.com/profile/api-tokens → Create Token → Custom:
+#      • Account · Cloudflare Tunnel · Edit
+#      • Zone    · DNS · Edit   (Zone Resources → jrcodestudio.org)
+# 2) Run it (it will prompt for an admin password if none is set):
+CF_API_TOKEN=<your-token> ./tunnel.sh
+```
+
+Re-running is safe (idempotent). After it finishes, do the optional Cloudflare
+**Access** (step 3) and **zone settings** (step 4) below, then the verification
+checklist. The manual dashboard steps follow if you prefer clicking.
+
+## 2. Create the Cloudflare Tunnel (dashboard — manual alternative)
 
 Cloudflare **Zero Trust → Networks → Tunnels → Create a tunnel**:
 
