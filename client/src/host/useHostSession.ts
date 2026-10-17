@@ -159,6 +159,11 @@ export function useHostSession(sessionId: string) {
       socketRef.current?.emit('host:setVoterNames', { sessionId, enabled }, () => {}),
     [sessionId],
   );
+  const hideResponse = useCallback(
+    (playerId: string, hidden: boolean) =>
+      socketRef.current?.emit('host:hideResponse', { sessionId, playerId, hidden }, () => {}),
+    [sessionId],
+  );
 
-  return { state: s, action, kick, setVoterNames };
+  return { state: s, action, kick, setVoterNames, hideResponse };
 }

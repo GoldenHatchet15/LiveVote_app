@@ -13,7 +13,7 @@ import { Ended } from './screens/Ended';
 
 export function HostApp() {
   const { sessionId } = useParams();
-  const { state, action, kick, setVoterNames } = useHostSession(sessionId ?? '');
+  const { state, action, kick, setVoterNames, hideResponse } = useHostSession(sessionId ?? '');
   const [baseUrl, setBaseUrl] = useState<string>(() =>
     typeof window !== 'undefined' ? window.location.origin : '',
   );
@@ -116,7 +116,12 @@ export function HostApp() {
         />
       )}
       {state.state === 'REVEAL' && state.question && state.results && (
-        <Reveal question={state.question} results={state.results} hideResults={hideResults} />
+        <Reveal
+          question={state.question}
+          results={state.results}
+          hideResults={hideResults}
+          onHide={hideResponse}
+        />
       )}
       {state.state === 'LEADERBOARD' && <Leaderboard entries={state.leaderboard} />}
       {state.state === 'ENDED' && state.ended && (

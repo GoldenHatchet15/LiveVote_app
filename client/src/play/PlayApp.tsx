@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { NICKNAME_MAX, PIN_LENGTH, type AnswerValue, type PublicQuestion } from '@livevote/shared';
+import { NICKNAME_MAX, PIN_LENGTH, type PublicQuestion } from '@livevote/shared';
 import { Shape, shapeColor } from '../components/Shape';
+import { QuestionInput } from './QuestionInput';
 import { usePlaySession, type PlayState } from './usePlaySession';
 
 export function PlayApp() {
@@ -30,7 +31,7 @@ export function PlayApp() {
       )}
       {state.phase === 'lobby' && <Centered title="You’re in! 🎉" subtitle={`${state.nickname} · look at the screen`} />}
       {state.phase === 'question' && state.question && (
-        <QuestionScreen question={state.question} onAnswer={answer} />
+        <QuestionInput question={state.question} onAnswer={answer} />
       )}
       {state.phase === 'answered' && state.question && (
         <AnsweredScreen question={state.question} selectedOptionId={state.selectedOptionId} />
@@ -138,59 +139,6 @@ function JoinScreen({
           {state.joinBusy ? 'Joining…' : 'Enter'}
         </button>
       </form>
-    </div>
-  );
-}
-
-function AnswerButton({
-  index,
-  text,
-  onClick,
-  disabled,
-  faded,
-}: {
-  index: number;
-  text: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  faded?: boolean;
-}) {
-  return (
-    <button
-      data-testid={`answer-${index}`}
-      onClick={onClick}
-      disabled={disabled}
-      className="flex items-center gap-3 rounded-2xl px-5 text-left text-white shadow-lg transition active:scale-95 disabled:active:scale-100"
-      style={{ backgroundColor: shapeColor(index), opacity: faded ? 0.4 : 1, minHeight: 0 }}
-    >
-      <Shape index={index} className="h-10 w-10 shrink-0 text-white" />
-      <span className="text-xl font-bold leading-tight">{text}</span>
-    </button>
-  );
-}
-
-function QuestionScreen({
-  question,
-  onAnswer,
-}: {
-  question: PublicQuestion;
-  onAnswer: (value: AnswerValue) => void;
-}) {
-  return (
-    <div className="flex flex-1 flex-col p-3">
-      <p className="px-2 py-3 text-center text-lg font-semibold text-ink">
-        {question.text}
-      </p>
-      <div className="grid flex-1 grid-cols-1 gap-3">
-        {question.options.map((o) => (
-          <AnswerButton
-            key={o.id}
-            index={o.index}
-            text={o.text}
-            onClick={() => onAnswer({ kind: 'option', optionId: o.id })}
-          />
-        ))}
-      </div>
     </div>
   );
 }

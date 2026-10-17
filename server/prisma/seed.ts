@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import type { QuestionConfig, QuestionType } from '@livevote/shared';
 
 const prisma = new PrismaClient();
 
@@ -9,7 +10,9 @@ interface SeedOption {
 interface SeedQuestion {
   text: string;
   mode: 'POLL' | 'QUIZ';
-  options: SeedOption[];
+  type?: QuestionType;
+  config?: QuestionConfig;
+  options?: SeedOption[];
   timeLimitSec: number | null;
   points: 'STANDARD' | 'DOUBLE' | 'NONE';
   imageUrl?: string | null;
@@ -138,6 +141,80 @@ const POLL_SET: SeedSet = {
   ],
 };
 
+const MIXED_SET: SeedSet = {
+  title: 'Mixed Question Types',
+  description: 'One of every question type — great for a feature demo.',
+  showVoterNames: true,
+  questions: [
+    {
+      text: 'Which is the capital of Japan?',
+      mode: 'QUIZ',
+      type: 'MULTIPLE_CHOICE',
+      timeLimitSec: 20,
+      points: 'STANDARD',
+      options: [{ text: 'Tokyo', correct: true }, { text: 'Kyoto' }, { text: 'Osaka' }, { text: 'Nara' }],
+    },
+    {
+      text: 'Which of these are prime numbers?',
+      mode: 'QUIZ',
+      type: 'MULTI_SELECT',
+      timeLimitSec: 25,
+      points: 'STANDARD',
+      options: [{ text: '2', correct: true }, { text: '4' }, { text: '5', correct: true }, { text: '9' }],
+    },
+    {
+      text: 'The sun is a star.',
+      mode: 'QUIZ',
+      type: 'TRUE_FALSE',
+      config: { trueLabel: 'True', falseLabel: 'False' },
+      timeLimitSec: 15,
+      points: 'STANDARD',
+      options: [{ text: 'True', correct: true }, { text: 'False' }],
+    },
+    {
+      text: 'How do you say "hello" in Spanish?',
+      mode: 'QUIZ',
+      type: 'TYPE_ANSWER',
+      config: { acceptedAnswers: ['hola', 'buenos días'], exactMatch: false },
+      timeLimitSec: 20,
+      points: 'STANDARD',
+    },
+    {
+      text: 'In one word, how is this session going?',
+      mode: 'POLL',
+      type: 'OPEN_ENDED',
+      config: { revealStyle: 'WORD_CLOUD' },
+      timeLimitSec: 30,
+      points: 'NONE',
+    },
+    {
+      text: 'What year did humans first land on the Moon?',
+      mode: 'QUIZ',
+      type: 'SLIDER',
+      config: { min: 1940, max: 2000, step: 1, unit: null, correctValue: 1969, tolerance: 2 },
+      timeLimitSec: 25,
+      points: 'STANDARD',
+    },
+    {
+      text: 'Put these planets in order from the Sun, nearest first.',
+      mode: 'QUIZ',
+      type: 'ORDERING',
+      timeLimitSec: 30,
+      points: 'STANDARD',
+      // Listed in the CORRECT order; players see them shuffled.
+      options: [{ text: 'Mercury' }, { text: 'Venus' }, { text: 'Earth' }, { text: 'Mars' }],
+    },
+    {
+      text: 'How useful was today’s session?',
+      mode: 'POLL',
+      type: 'RATING',
+      config: { scale: 5, lowLabel: 'Not at all', highLabel: 'Extremely' },
+      timeLimitSec: 20,
+      points: 'NONE',
+    },
+  ],
+};
+
 async function createSet(set: SeedSet): Promise<void> {
   await prisma.questionSet.create({
     data: {
@@ -149,11 +226,13 @@ async function createSet(set: SeedSet): Promise<void> {
           text: q.text,
           imageUrl: q.imageUrl ?? null,
           mode: q.mode,
+          type: q.type ?? 'MULTIPLE_CHOICE',
+          config: q.config ? JSON.stringify(q.config) : null,
           timeLimitSec: q.timeLimitSec,
           points: q.points,
           order: qi,
           options: {
-            create: q.options.map((o, oi) => ({
+            create: (q.options ?? []).map((o, oi) => ({
               text: o.text,
               index: oi,
               isCorrect: o.correct ?? false,
@@ -168,12 +247,13 @@ async function createSet(set: SeedSet): Promise<void> {
 async function main(): Promise<void> {
   // Reset only the seed sets so re-running is safe and idempotent.
   await prisma.questionSet.deleteMany({
-    where: { title: { in: [QUIZ_SET.title, POLL_SET.title] } },
+    where: { title: { in: [QUIZ_SET.title, POLL_SET.title, MIXED_SET.title] } },
   });
   await createSet(QUIZ_SET);
   await createSet(POLL_SET);
+  await createSet(MIXED_SET);
   // eslint-disable-next-line no-console
-  console.log('Seeded: "%s" and "%s"', QUIZ_SET.title, POLL_SET.title);
+  console.log('Seeded: "%s", "%s" and "%s"', QUIZ_SET.title, POLL_SET.title, MIXED_SET.title);
 }
 
 main()
