@@ -51,6 +51,8 @@ export interface PlayerSnapshot {
   totalPlayers: number;
   /** Populated when rejoining mid-REVEAL so the player sees their result. */
   lastResult: PlayerResult | null;
+  /** Drives the "your name will be shown" transparency notice only. */
+  showVoterNames: boolean;
 }
 
 export type JoinResponse =
@@ -94,6 +96,8 @@ export interface HostSnapshot {
   results: QuestionResults | null;
   /** Present when state is LEADERBOARD or ENDED. */
   leaderboard: LeaderboardEntry[];
+  /** Effective per-session value of the "show voter names" setting. */
+  showVoterNames: boolean;
 }
 
 export type HostJoinResponse =
@@ -138,6 +142,10 @@ export interface ServerToClientEvents {
   // Player lifecycle
   'player:kicked': (p: { reason: string }) => void;
 
+  // Broadcast when the host toggles the "show voter names" setting mid-session,
+  // so the player transparency notice and the host UI update immediately.
+  'voterNames:update': (p: { enabled: boolean }) => void;
+
   errorMsg: (p: { code: string; message: string }) => void;
 }
 
@@ -160,6 +168,11 @@ export interface ClientToServerEvents {
   ) => void;
   'host:kick': (
     p: { sessionId: string; playerId: string },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** Toggle the "show voter names" setting for this session only. */
+  'host:setVoterNames': (
+    p: { sessionId: string; enabled: boolean },
     ack: (res: Ack) => void,
   ) => void;
 }

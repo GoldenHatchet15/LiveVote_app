@@ -35,7 +35,11 @@ export interface EngineOptions {
   hooks?: EngineHooks;
 }
 
-function toPublicQuestion(q: LoadedQuestion, total: number): PublicQuestion {
+function toPublicQuestion(
+  q: LoadedQuestion,
+  total: number,
+  showVoterNames: boolean,
+): PublicQuestion {
   return {
     id: q.id,
     index: q.order,
@@ -46,6 +50,7 @@ function toPublicQuestion(q: LoadedQuestion, total: number): PublicQuestion {
     options: q.options.map((o) => ({ id: o.id, text: o.text, index: o.index })),
     timeLimitSec: q.timeLimitSec,
     points: q.points,
+    showVoterNames,
   };
 }
 
@@ -81,6 +86,8 @@ export class SessionEngine {
   currentQuestionIndex = 0;
   questionStartedAt: number | null = null;
   questionEndsAt: number | null = null;
+  /** Per-session override of the set's "show voter names" setting. */
+  showVoterNames: boolean;
 
   readonly players = new Map<string, RuntimePlayer>();
   private timerHandle: unknown = null;
@@ -94,6 +101,50 @@ export class SessionEngine {
     this.emitter = opts.emitter ?? nullEmitter;
     this.scheduler = opts.scheduler ?? realScheduler;
     this.hooks = opts.hooks ?? {};
+    this.showVoterNames = opts.set.showVoterNames;
+  }
+
+  /**
+   * Toggle voter-name visibility for this session only (never persisted to the
+   * saved set). Takes effect from the next reveal, or immediately if the host
+   * is already on a reveal screen (the chart is re-sent with/without names).
+   */
+  setShowVoterNames(enabled: boolean): EngineResult {
+    this.showVoterNames = enabled;
+    this.emitter.toAll('voterNames:update', { enabled });
+    if (this.state === 'REVEAL') {
+      const results = this.currentResults();
+      if (results) this.emitter.toHost('reveal', { results });
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Per-option voter nicknames plus the "no answer" list, for host-facing
+   * payloads only. Returns undefined fields when the setting is off so nothing
+   * identifying is ever attached.
+   */
+  private voterLists(q: LoadedQuestion): {
+    voters?: { optionId: string; nicknames: string[] }[];
+    noAnswer?: string[];
+  } {
+    if (!this.showVoterNames) return {};
+    const byOption = new Map<string, string[]>();
+    for (const o of q.options) byOption.set(o.id, []);
+    const noAnswer: string[] = [];
+    // Stable alphabetical order so the projector display is predictable.
+    const active = this.activePlayers().sort((a, b) =>
+      a.nickname.localeCompare(b.nickname),
+    );
+    for (const p of active) {
+      const a = p.answers.get(q.id);
+      if (a && byOption.has(a.optionId)) byOption.get(a.optionId)!.push(p.nickname);
+      else noAnswer.push(p.nickname);
+    }
+    return {
+      voters: q.options.map((o) => ({ optionId: o.id, nicknames: byOption.get(o.id) ?? [] })),
+      noAnswer,
+    };
   }
 
   private safeHook(fn: (() => void) | undefined): void {
@@ -291,7 +342,7 @@ export class SessionEngine {
 
     this.emitState();
     this.emitter.toAll('question:start', {
-      question: toPublicQuestion(q, this.totalQuestions),
+      question: toPublicQuestion(q, this.totalQuestions, this.showVoterNames),
       serverNow: this.questionStartedAt,
       endsAt: this.questionEndsAt,
     });
@@ -450,6 +501,7 @@ export class SessionEngine {
       tallies,
       totalAnswers,
       totalPlayers,
+      ...this.voterLists(q),
     };
 
     // Broadcast: host gets the chart; each player gets only their own result.
@@ -554,7 +606,7 @@ export class SessionEngine {
 
   publicCurrentQuestion(): PublicQuestion | null {
     const q = this.currentLoaded();
-    return q ? toPublicQuestion(q, this.totalQuestions) : null;
+    return q ? toPublicQuestion(q, this.totalQuestions, this.showVoterNames) : null;
   }
 
   private currentResults(): QuestionResults | null {
@@ -582,6 +634,7 @@ export class SessionEngine {
       }),
       totalAnswers,
       totalPlayers: this.activePlayers().length,
+      ...this.voterLists(q),
     };
   }
 
@@ -605,6 +658,7 @@ export class SessionEngine {
         this.state === 'LEADERBOARD' || this.state === 'ENDED'
           ? this.leaderboard()
           : [],
+      showVoterNames: this.showVoterNames,
     };
   }
 
@@ -634,7 +688,9 @@ export class SessionEngine {
     return {
       state: this.state,
       question:
-        this.state === 'QUESTION' && q ? toPublicQuestion(q, this.totalQuestions) : null,
+        this.state === 'QUESTION' && q
+          ? toPublicQuestion(q, this.totalQuestions, this.showVoterNames)
+          : null,
       serverNow: this.scheduler.now(),
       endsAt: this.questionEndsAt,
       hasAnswered: !!answer,
@@ -644,6 +700,7 @@ export class SessionEngine {
       rank,
       totalPlayers: this.activePlayers().length,
       lastResult,
+      showVoterNames: this.showVoterNames,
     };
   }
 }

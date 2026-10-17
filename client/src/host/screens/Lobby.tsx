@@ -8,12 +8,16 @@ export function Lobby({
   qrUrl,
   title,
   players,
+  showVoterNames,
+  onToggleVoterNames,
 }: {
   pin: string;
   joinUrl: string;
   qrUrl: string;
   title: string;
   players: PlayerSummary[];
+  showVoterNames: boolean;
+  onToggleVoterNames: () => void;
 }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
@@ -47,6 +51,28 @@ export function Lobby({
         </span>
         <span className="text-2xl">player{players.length === 1 ? '' : 's'} joined</span>
       </div>
+
+      <button
+        data-testid="lobby-voter-names"
+        aria-pressed={showVoterNames}
+        onClick={onToggleVoterNames}
+        className="flex items-center gap-3 rounded-full bg-white/10 px-5 py-2 text-white/80 hover:bg-white/20"
+      >
+        <span
+          className={`flex h-6 w-11 items-center rounded-full p-0.5 transition-colors ${
+            showVoterNames ? 'bg-brand' : 'bg-white/25'
+          }`}
+        >
+          <span
+            className={`h-5 w-5 rounded-full bg-white transition-transform ${
+              showVoterNames ? 'translate-x-5' : ''
+            }`}
+          />
+        </span>
+        <span className="text-lg font-semibold">
+          Show voter names on results: {showVoterNames ? 'On' : 'Off'}
+        </span>
+      </button>
 
       <div className="flex max-h-[26vh] max-w-6xl flex-wrap justify-center gap-3 overflow-hidden">
         <AnimatePresence>

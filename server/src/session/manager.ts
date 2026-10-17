@@ -76,6 +76,7 @@ export class SessionManager {
       id: set.id,
       title: set.title,
       description: set.description,
+      showVoterNames: set.showVoterNames,
       questions: set.questions.map((q) => ({
         id: q.id,
         text: q.text,

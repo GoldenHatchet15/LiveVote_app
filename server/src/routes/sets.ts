@@ -68,6 +68,7 @@ setsRouter.post('/', async (req, res) => {
     data: {
       title: input.title,
       description: input.description,
+      showVoterNames: input.showVoterNames,
       questions: { create: questionsCreateInput(input) },
     },
     include: includeGraph,
@@ -98,6 +99,7 @@ setsRouter.put('/:id', async (req, res) => {
       data: {
         title: input.title,
         description: input.description,
+        showVoterNames: input.showVoterNames,
         questions: { create: questionsCreateInput(input) },
       },
       include: includeGraph,
@@ -157,6 +159,7 @@ setsRouter.post('/import', async (req, res) => {
     data: {
       title: resolved.title,
       description: resolved.description,
+      showVoterNames: resolved.showVoterNames,
       questions: { create: questionsCreateInput(resolved) },
     },
     include: includeGraph,

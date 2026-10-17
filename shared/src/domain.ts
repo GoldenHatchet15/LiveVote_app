@@ -47,6 +47,11 @@ export interface QuestionSet {
   id: string;
   title: string;
   description: string | null;
+  /**
+   * When true, the host REVEAL screen shows which players chose each option.
+   * OFF by default; overridable per session without changing the saved set.
+   */
+  showVoterNames: boolean;
   createdAt: string;
   updatedAt: string;
   questions: Question[];
@@ -67,6 +72,12 @@ export interface PublicQuestion {
   options: Option[];
   timeLimitSec: TimeLimitSec;
   points: PointsValue;
+  /**
+   * Whether voter names will be shown on the host results screen. Players use
+   * this only to display the "your name will be shown" transparency notice —
+   * it never carries any other player's identity or answer.
+   */
+  showVoterNames: boolean;
 }
 
 export interface PlayerSummary {
@@ -94,6 +105,16 @@ export interface OptionTally {
   percent: number;
 }
 
+/**
+ * Nicknames of the players who chose a given option. Populated ONLY when the
+ * "show voter names" setting is on, and ONLY on host-facing payloads — this is
+ * never sent to player clients.
+ */
+export interface OptionVoters {
+  optionId: string;
+  nicknames: string[];
+}
+
 export interface QuestionResults {
   questionId: string;
   mode: QuestionMode;
@@ -102,6 +123,13 @@ export interface QuestionResults {
   tallies: OptionTally[];
   totalAnswers: number;
   totalPlayers: number;
+  /**
+   * Per-option voter nicknames (host-only). Present only when "show voter
+   * names" is enabled for the session; omitted entirely when off.
+   */
+  voters?: OptionVoters[];
+  /** Nicknames of active players who did not answer. Present only when on. */
+  noAnswer?: string[];
 }
 
 /** Personal result sent to a single player at REVEAL. */

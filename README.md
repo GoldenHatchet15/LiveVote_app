@@ -191,6 +191,23 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   option, and options must be non-empty and unique. Invalid sets can't be saved.
 - **Export** a set to JSON (from the list or the editor). **Import** a JSON
   export to recreate it — the file is schema-validated with zod.
+- **Show voter names on results** (per set, **off by default**). When on, the
+  host REVEAL screen lists which players chose each option (correct answers use
+  the correct-answer highlight in Quiz mode), with up to 10 names per option and
+  a **+N more** control to expand the rest. Players are shown a small
+  *"your name will be shown with your answer"* notice so voting is never
+  secretly attributed.
+
+**Showing voter names.** The setting is saved on the question set and is carried
+through JSON export/import. The host can also **override it per session** with
+the toggle in the lobby or the controls bar (keyboard shortcut `N`); the
+override changes only that session and never edits the saved set. Toggling takes
+effect from the next reveal, or immediately if the host is already on a reveal.
+
+> **Privacy.** Voter names are sent **only to the host**, and **only when the
+> setting is on** — this is enforced on the server, not just hidden in the UI.
+> Players never receive other players' answers, and the CSV export (which
+> already contains per-player answers for the admin) is unchanged.
 
 **Scoring (Quiz mode).** `points = round(1000 × (1 − (responseTime / timeLimit) / 2))`,
 so a correct answer is worth 500–1000 depending on speed (a flat 1000 for
@@ -245,12 +262,24 @@ timestamps and the client countdown is display-only.
   ```bash
   npm test                 # or: npm run test:coverage -w server
   ```
-- **End-to-end (Playwright):** one host context + several player contexts play a
-  full **Quiz** game and a full **Poll** game, asserting scores, leaderboard
-  order and chart counts.
+- **End-to-end / multi-device (Playwright):** one host context + several player
+  contexts play full **Quiz** and **Poll** games, plus reconnect, kick, the
+  "show voter names" feature, and the end-of-session → dashboard regression —
+  asserting scores, leaderboard order and chart counts.
   ```bash
   npm run test:e2e:install   # one-time: download the Chromium browser
-  npm run test:e2e
+  npm run test:e2e           # the whole e2e suite (builds + boots the app)
+  npx playwright test voter-names   # just one spec
+  ```
+- **Load test (100 concurrent clients):** part of `npm test` — it opens 100
+  sockets in one session and asserts no answer is dropped and every player gets
+  a result. Run it alone with:
+  ```bash
+  npm test -w server -- load
+  ```
+- **Run everything (what CI runs):**
+  ```bash
+  npm run typecheck && npm run build && npm test && npm run test:e2e
   ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → build → unit/integration →

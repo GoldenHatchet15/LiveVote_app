@@ -110,6 +110,23 @@ export function SetEditor({ mode }: { mode: 'new' | 'edit' }) {
           value={state.description}
           onChange={(e) => update({ description: e.target.value })}
         />
+        <label className="mt-4 flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            data-testid="show-voter-names"
+            className="mt-1 h-5 w-5 accent-brand"
+            checked={state.showVoterNames}
+            onChange={(e) => update({ showVoterNames: e.target.checked })}
+          />
+          <span>
+            <span className="font-semibold">Show voter names on results</span>
+            <span className="block text-sm text-ink/50">
+              After the timer, the host screen lists who chose each option. Off by
+              default; the host can still flip this per session. Players are told
+              their name will be shown.
+            </span>
+          </span>
+        </label>
       </div>
 
       {showErrors && validation && validation.topLevel.length > 0 && (
