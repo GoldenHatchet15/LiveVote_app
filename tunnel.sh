@@ -123,12 +123,15 @@ else ok "ADMIN_PASSWORD_HASH already set"; fi
 
 # ---------------------------------------------------------------- STEP 2
 bold "STEP 2 — Resolve Cloudflare account & zone"
-ACCOUNT_ID="$(cf GET "/accounts?per_page=50" | pluck 'o.result[0].id')"
-[ -n "$ACCOUNT_ID" ] || die "no account found for this token"
-ok "account: $ACCOUNT_ID"
-ZONE_ID="$(cf GET "/zones?name=$DOMAIN" | pluck 'o.result[0].id')"
-[ -n "$ZONE_ID" ] || die "zone $DOMAIN not found on this account/token"
+# Derive both the zone id and the account id from the zone lookup — this needs
+# only the Zone·DNS permission, avoiding a separate /accounts list call.
+ZONE_JSON="$(cf GET "/zones?name=$DOMAIN")"
+ZONE_ID="$(printf '%s' "$ZONE_JSON" | pluck 'o.result[0] ? o.result[0].id : ""')"
+ACCOUNT_ID="$(printf '%s' "$ZONE_JSON" | pluck 'o.result[0] ? o.result[0].account.id : ""')"
+[ -n "$ZONE_ID" ] || die "zone '$DOMAIN' not found for this token. Ensure the token has Zone·DNS·Edit scoped to $DOMAIN."
+[ -n "$ACCOUNT_ID" ] || die "could not read the account id from the zone."
 ok "zone $DOMAIN: $ZONE_ID"
+ok "account: $ACCOUNT_ID"
 
 # ---------------------------------------------------------------- STEP 3
 bold "STEP 3 — Create or reuse the tunnel '$TUNNEL_NAME'"
