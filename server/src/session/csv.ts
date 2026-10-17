@@ -1,10 +1,29 @@
+import type { AnswerValue } from '@livevote/shared';
 import type { SessionEngine } from './engine.js';
-import type { LoadedSet } from './types.js';
+import type { LoadedQuestion, LoadedSet } from './types.js';
 
 function esc(value: string | number | boolean | null): string {
   const s = value === null ? '' : String(value);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+/** Human-readable rendering of a canonical answer value for the CSV. */
+function renderResponse(q: LoadedQuestion, value: AnswerValue | null): string {
+  if (!value) return '';
+  const textOf = (id: string) => q.options.find((o) => o.id === id)?.text ?? id;
+  switch (value.kind) {
+    case 'option':
+      return textOf(value.optionId);
+    case 'options':
+      return value.optionIds.map(textOf).join(' | ');
+    case 'order':
+      return value.order.map(textOf).join(' > ');
+    case 'text':
+      return value.text;
+    case 'number':
+      return String(value.value);
+  }
 }
 
 /**
@@ -19,7 +38,8 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
     'question_number',
     'question_text',
     'mode',
-    'selected_option',
+    'type',
+    'response',
     'correct',
     'response_ms',
     'points_awarded',
@@ -33,11 +53,15 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
   for (const player of players) {
     for (const q of set.questions) {
       const answer = player.answers.get(q.id) ?? null;
-      const optText = answer
-        ? (q.options.find((o) => o.id === answer.optionId)?.text ?? '')
-        : '';
+      const response = renderResponse(q, answer?.value ?? null);
       const correct =
-        q.mode === 'POLL' ? '' : answer ? (answer.correct ? 'yes' : 'no') : 'no answer';
+        answer?.correct === null || answer?.correct === undefined
+          ? answer
+            ? '' // poll-style: no correctness
+            : 'no answer'
+          : answer.correct
+            ? 'yes'
+            : 'no';
       lines.push(
         [
           esc(player.nickname),
@@ -45,7 +69,8 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
           esc(q.order + 1),
           esc(q.text),
           esc(q.mode),
-          esc(optText),
+          esc(q.type),
+          esc(response),
           esc(correct),
           esc(answer?.responseMs ?? ''),
           esc(answer?.pointsAwarded ?? 0),

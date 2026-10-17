@@ -39,7 +39,7 @@ describe('state machine', () => {
 
   it('rejects answering before the game starts', () => {
     addPlayers(ctx.engine, ['Ann']);
-    const r = ctx.engine.submitAnswer('p0', 'q1', 'q1a');
+    const r = ctx.engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('QUESTION_NOT_ACTIVE');
   });
@@ -125,9 +125,9 @@ describe('timers', () => {
     const { engine } = newEngine();
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     expect(engine.state).toBe('QUESTION');
-    engine.submitAnswer('p1', 'q1', 'q1b');
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' });
     expect(engine.state).toBe('REVEAL');
   });
 });
@@ -137,8 +137,8 @@ describe('answers', () => {
     const { engine } = newEngine();
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
-    expect(engine.submitAnswer('p0', 'q1', 'q1a').ok).toBe(true);
-    const dup = engine.submitAnswer('p0', 'q1', 'q1b');
+    expect(engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }).ok).toBe(true);
+    const dup = engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1b' });
     expect(dup.ok).toBe(false);
     if (!dup.ok) expect(dup.code).toBe('ALREADY_ANSWERED');
   });
@@ -148,7 +148,7 @@ describe('answers', () => {
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
     scheduler.current = 20_000 + 800; // beyond 750ms grace
-    const r = engine.submitAnswer('p0', 'q1', 'q1a');
+    const r = engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('ANSWER_TOO_LATE');
   });
@@ -158,7 +158,7 @@ describe('answers', () => {
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
     engine.kick('p0');
-    const r = engine.submitAnswer('p0', 'q1', 'q1a');
+    const r = engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('PLAYER_KICKED');
   });
@@ -167,7 +167,7 @@ describe('answers', () => {
     const { engine } = newEngine();
     addPlayers(engine, ['Ann']);
     engine.startGame();
-    const r = engine.submitAnswer('p0', 'q1', 'nope');
+    const r = engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'nope' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('OPTION_INVALID');
   });
@@ -178,9 +178,9 @@ describe('reveal, scoring and leaderboard', () => {
     const { engine, emitter } = newEngine();
     addPlayers(engine, ['Ann', 'Bob', 'Cy']);
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a'); // correct
-    engine.submitAnswer('p1', 'q1', 'q1a'); // correct
-    engine.submitAnswer('p2', 'q1', 'q1b'); // wrong -> auto reveal
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // correct
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1a' }); // correct
+    engine.submitAnswer('p2', 'q1', { kind: 'option', optionId: 'q1b' }); // wrong -> auto reveal
     expect(engine.state).toBe('REVEAL');
 
     const reveal = emitter.find('reveal').at(-1)!.payload as {
@@ -197,8 +197,8 @@ describe('reveal, scoring and leaderboard', () => {
     const { engine } = newEngine();
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a'); // correct, fast (t=0)
-    engine.submitAnswer('p1', 'q1', 'q1b'); // wrong
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // correct, fast (t=0)
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' }); // wrong
     const board = engine.leaderboard();
     expect(board[0]!.nickname).toBe('Ann');
     expect(board[0]!.score).toBe(1000);
@@ -210,8 +210,8 @@ describe('reveal, scoring and leaderboard', () => {
     const { engine, emitter } = newEngine();
     addPlayers(engine, ['Ann', 'Bob']);
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
-    engine.submitAnswer('p1', 'q1', 'q1b');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' });
     const results = emitter
       .find('player:result')
       .map((e) => ({ pid: e.playerId, r: (e.payload as { result: PlayerResult }).result }));
@@ -227,7 +227,7 @@ describe('reveal, scoring and leaderboard', () => {
     const poll = newEngine(makePollSet());
     addPlayers(poll.engine, ['Ann']);
     poll.engine.startGame();
-    poll.engine.submitAnswer('p0', 'p1', 'p1a');
+    poll.engine.submitAnswer('p0', 'p1', { kind: 'option', optionId: 'p1a' });
     expect(poll.engine.state).toBe('REVEAL');
     const reveal = poll.emitter.find('reveal').at(-1)!.payload as {
       results: QuestionResults;

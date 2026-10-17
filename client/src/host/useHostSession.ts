@@ -87,6 +87,8 @@ export function useHostSession(sessionId: string) {
                 text: snap.currentQuestion.text,
                 imageUrl: snap.currentQuestion.imageUrl,
                 mode: snap.currentQuestion.mode,
+                type: snap.currentQuestion.type,
+                config: snap.currentQuestion.config,
                 options: snap.currentQuestion.options,
                 timeLimitSec: snap.currentQuestion.timeLimitSec,
                 points: snap.currentQuestion.points,

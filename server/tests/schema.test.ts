@@ -20,6 +20,8 @@ const validQuiz: QuestionSetInput = {
       text: 'Capital of France?',
       imageUrl: null,
       mode: 'QUIZ',
+      type: 'MULTIPLE_CHOICE',
+      config: {},
       options: [{ text: 'Paris' }, { text: 'Lyon' }],
       correctOptionIndices: [0],
       timeLimitSec: 20,

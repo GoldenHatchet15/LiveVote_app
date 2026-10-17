@@ -1,9 +1,11 @@
 import {
   questionSetInputSchema,
   type PointsValue,
+  type QuestionConfig,
   type QuestionMode,
   type QuestionSet,
   type QuestionSetInput,
+  type QuestionType,
   type TimeLimitSec,
 } from '@livevote/shared';
 
@@ -16,6 +18,8 @@ export interface EditQuestion {
   text: string;
   imageUrl: string;
   mode: QuestionMode;
+  type: QuestionType;
+  config: QuestionConfig;
   options: EditOption[];
   correct: number[]; // option indices
   timeLimitSec: TimeLimitSec;
@@ -37,6 +41,8 @@ export function blankQuestion(): EditQuestion {
     text: '',
     imageUrl: '',
     mode: 'QUIZ',
+    type: 'MULTIPLE_CHOICE',
+    config: {},
     options: [
       { id: uid(), text: '' },
       { id: uid(), text: '' },
@@ -66,6 +72,8 @@ export function fromSet(set: QuestionSet): EditState {
         text: q.text,
         imageUrl: q.imageUrl ?? '',
         mode: q.mode,
+        type: q.type,
+        config: q.config,
         options,
         correct,
         timeLimitSec: q.timeLimitSec,
@@ -84,6 +92,8 @@ export function toInput(state: EditState): QuestionSetInput {
       text: q.text.trim(),
       imageUrl: q.imageUrl.trim() ? q.imageUrl.trim() : null,
       mode: q.mode,
+      type: q.type,
+      config: q.config,
       options: q.options.map((o) => ({ text: o.text.trim() })),
       correctOptionIndices: q.mode === 'QUIZ' ? q.correct : [],
       timeLimitSec: q.timeLimitSec,

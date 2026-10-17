@@ -1,9 +1,12 @@
 import type {
+  AnswerValue,
   PointsValue,
   PublicQuestion,
   Question,
+  QuestionConfig,
   QuestionMode,
   QuestionResults,
+  QuestionType,
   ServerToClientEvents,
   TimeLimitSec,
 } from '@livevote/shared';
@@ -21,6 +24,8 @@ export interface LoadedQuestion {
   text: string;
   imageUrl: string | null;
   mode: QuestionMode;
+  type: QuestionType;
+  config: QuestionConfig;
   options: LoadedOption[];
   timeLimitSec: TimeLimitSec;
   points: PointsValue;
@@ -37,12 +42,15 @@ export interface LoadedSet {
 
 /** Per-question answer recorded for a player. */
 export interface RecordedAnswer {
-  optionId: string;
+  /** Canonical, type-specific answer value. */
+  value: AnswerValue;
   responseMs: number;
   /** Computed at reveal; 0 until then. */
   pointsAwarded: number;
   /** Computed at reveal; null for POLL / until reveal. */
   correct: boolean | null;
+  /** Host can hide an OPEN_ENDED response from the screen + word cloud. */
+  hidden?: boolean;
 }
 
 export interface RuntimePlayer {
@@ -100,7 +108,7 @@ export interface RevealEffect {
   results: QuestionResults;
   perPlayer: Array<{
     playerId: string;
-    optionId: string | null;
+    value: AnswerValue | null;
     responseMs: number;
     correct: boolean | null;
     pointsAwarded: number;
@@ -112,7 +120,7 @@ export interface RevealEffect {
 export interface AnswerEffect {
   playerId: string;
   questionId: string;
-  optionId: string;
+  value: AnswerValue;
   responseMs: number;
 }
 

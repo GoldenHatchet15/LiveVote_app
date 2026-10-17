@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { NICKNAME_MAX, PIN_LENGTH, type PublicQuestion } from '@livevote/shared';
+import { NICKNAME_MAX, PIN_LENGTH, type AnswerValue, type PublicQuestion } from '@livevote/shared';
 import { Shape, shapeColor } from '../components/Shape';
 import { usePlaySession, type PlayState } from './usePlaySession';
 
@@ -174,7 +174,7 @@ function QuestionScreen({
   onAnswer,
 }: {
   question: PublicQuestion;
-  onAnswer: (optionId: string) => void;
+  onAnswer: (value: AnswerValue) => void;
 }) {
   return (
     <div className="flex flex-1 flex-col p-3">
@@ -183,7 +183,12 @@ function QuestionScreen({
       </p>
       <div className="grid flex-1 grid-cols-1 gap-3">
         {question.options.map((o) => (
-          <AnswerButton key={o.id} index={o.index} text={o.text} onClick={() => onAnswer(o.id)} />
+          <AnswerButton
+            key={o.id}
+            index={o.index}
+            text={o.text}
+            onClick={() => onAnswer({ kind: 'option', optionId: o.id })}
+          />
         ))}
       </div>
     </div>

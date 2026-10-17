@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AnswerResponse,
+  AnswerValue,
   JoinResponse,
   PlayerResult,
   PlayerSnapshot,
@@ -121,7 +122,10 @@ export function usePlaySession(initialPin: string) {
         question: snap.question,
         serverNow: snap.serverNow,
         endsAt: snap.endsAt,
-        selectedOptionId: snap.selectedOptionId,
+        selectedOptionId:
+          snap.selectedValue && snap.selectedValue.kind === 'option'
+            ? snap.selectedValue.optionId
+            : null,
         result: snap.lastResult,
         score: snap.score,
         rank: snap.rank,
@@ -237,22 +241,21 @@ export function usePlaySession(initialPin: string) {
   );
 
   const answer = useCallback(
-    (optionId: string) => {
+    (value: AnswerValue) => {
       const socket = socketRef.current;
       const q = s.question;
       if (!socket || !q) return;
       // Optimistic lock; the server confirms or rejects.
-      patch({ selectedOptionId: optionId, phase: 'answered' });
-      socket.emit(
-        'player:answer',
-        { questionId: q.id, optionId },
-        (res: AnswerResponse) => {
-          if (!res.ok) {
-            // Roll back if the server rejected (e.g. too late).
-            patch({ selectedOptionId: null, phase: 'question', error: res.message });
-          }
-        },
-      );
+      patch({
+        selectedOptionId: value.kind === 'option' ? value.optionId : null,
+        phase: 'answered',
+      });
+      socket.emit('player:answer', { questionId: q.id, value }, (res: AnswerResponse) => {
+        if (!res.ok) {
+          // Roll back if the server rejected (e.g. too late).
+          patch({ selectedOptionId: null, phase: 'question', error: res.message });
+        }
+      });
     },
     [patch, s.question],
   );

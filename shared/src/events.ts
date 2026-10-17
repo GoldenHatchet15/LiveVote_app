@@ -16,6 +16,7 @@ import type {
   QuestionResults,
   SessionState,
 } from './domain.js';
+import type { AnswerValue } from './questionTypes.js';
 
 // ---------- Common ack ----------
 
@@ -43,8 +44,8 @@ export interface PlayerSnapshot {
   endsAt: number | null;
   /** Whether this player has already answered the current question. */
   hasAnswered: boolean;
-  /** The option this player selected for the current question, if any. */
-  selectedOptionId: string | null;
+  /** The answer this player submitted for the current question, if any. */
+  selectedValue: AnswerValue | null;
   score: number;
   streak: number;
   rank: number;
@@ -67,12 +68,13 @@ export type JoinResponse =
 
 export interface AnswerRequest {
   questionId: string;
-  optionId: string;
+  /** Canonical, type-specific answer value. */
+  value: AnswerValue;
 }
 
 export interface AnswerResponse extends Ack {
-  /** Echoes the locked-in option so the client can reflect it reliably. */
-  acceptedOptionId?: string;
+  /** Echoes the locked-in answer so the client can reflect it reliably. */
+  acceptedValue?: AnswerValue;
 }
 
 // ---------- Host control ----------
@@ -173,6 +175,11 @@ export interface ClientToServerEvents {
   /** Toggle the "show voter names" setting for this session only. */
   'host:setVoterNames': (
     p: { sessionId: string; enabled: boolean },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** Hide/unhide a single OPEN_ENDED response from the screen + word cloud. */
+  'host:hideResponse': (
+    p: { sessionId: string; playerId: string; hidden: boolean },
     ack: (res: Ack) => void,
   ) => void;
 }

@@ -1,9 +1,13 @@
 import {
   computeScore,
   ErrorCodes,
+  gradeAnswer,
   LATE_ANSWER_GRACE_MS,
+  toPublicConfig,
+  type AnswerValue,
   type HostSnapshot,
   type LeaderboardEntry,
+  type Option,
   type PlayerResult,
   type PlayerSnapshot,
   type PlayerSummary,
@@ -25,6 +29,22 @@ import {
   type Scheduler,
   type SessionEmitter,
 } from './types.js';
+import { buildResults, prepareAnswer, type RevealEntry } from './answers.js';
+
+/** Stable per-question shuffle (deterministic across snapshots). */
+function shuffledOptions(q: LoadedQuestion): Option[] {
+  const hash = (s: string): number => {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+  return [...q.options]
+    .sort((a, b) => hash(q.id + a.id) - hash(q.id + b.id))
+    .map((o) => ({ id: o.id, text: o.text, index: o.index }));
+}
 
 export interface EngineOptions {
   sessionId: string;
@@ -40,6 +60,11 @@ function toPublicQuestion(
   total: number,
   showVoterNames: boolean,
 ): PublicQuestion {
+  // ORDERING players see the items shuffled; other option types keep order.
+  const options =
+    q.type === 'ORDERING'
+      ? shuffledOptions(q)
+      : q.options.map((o) => ({ id: o.id, text: o.text, index: o.index }));
   return {
     id: q.id,
     index: q.order,
@@ -47,7 +72,9 @@ function toPublicQuestion(
     text: q.text,
     imageUrl: q.imageUrl,
     mode: q.mode,
-    options: q.options.map((o) => ({ id: o.id, text: o.text, index: o.index })),
+    type: q.type,
+    config: toPublicConfig(q.type, q.config),
+    options,
     timeLimitSec: q.timeLimitSec,
     points: q.points,
     showVoterNames,
@@ -60,6 +87,8 @@ function toFullQuestion(q: LoadedQuestion): Question {
     text: q.text,
     imageUrl: q.imageUrl,
     mode: q.mode,
+    type: q.type,
+    config: q.config,
     options: q.options.map((o) => ({ id: o.id, text: o.text, index: o.index })),
     correctOptionIds: q.options.filter((o) => o.isCorrect).map((o) => o.id),
     timeLimitSec: q.timeLimitSec,
@@ -119,32 +148,30 @@ export class SessionEngine {
     return { ok: true };
   }
 
+  /** Active players' answers for a question, as reveal-building entries. */
+  private entriesFor(q: LoadedQuestion): RevealEntry[] {
+    return this.activePlayers().map((p) => ({
+      playerId: p.id,
+      nickname: p.nickname,
+      answer: p.answers.get(q.id) ?? null,
+    }));
+  }
+
   /**
-   * Per-option voter nicknames plus the "no answer" list, for host-facing
-   * payloads only. Returns undefined fields when the setting is off so nothing
-   * identifying is ever attached.
+   * Host moderation for OPEN_ENDED: hide/unhide a player's response from the
+   * screen and the word cloud. Re-sends the reveal to the host if live.
    */
-  private voterLists(q: LoadedQuestion): {
-    voters?: { optionId: string; nicknames: string[] }[];
-    noAnswer?: string[];
-  } {
-    if (!this.showVoterNames) return {};
-    const byOption = new Map<string, string[]>();
-    for (const o of q.options) byOption.set(o.id, []);
-    const noAnswer: string[] = [];
-    // Stable alphabetical order so the projector display is predictable.
-    const active = this.activePlayers().sort((a, b) =>
-      a.nickname.localeCompare(b.nickname),
-    );
-    for (const p of active) {
-      const a = p.answers.get(q.id);
-      if (a && byOption.has(a.optionId)) byOption.get(a.optionId)!.push(p.nickname);
-      else noAnswer.push(p.nickname);
+  setHiddenResponse(playerId: string, hidden: boolean): EngineResult {
+    const q = this.currentLoaded();
+    const p = this.players.get(playerId);
+    const answer = q && p ? p.answers.get(q.id) : undefined;
+    if (!answer) return { ok: false, code: ErrorCodes.INTERNAL, message: 'No response to hide' };
+    answer.hidden = hidden;
+    if (this.state === 'REVEAL') {
+      const results = this.currentResults();
+      if (results) this.emitter.toHost('reveal', { results });
     }
-    return {
-      voters: q.options.map((o) => ({ optionId: o.id, nicknames: byOption.get(o.id) ?? [] })),
-      noAnswer,
-    };
+    return { ok: true };
   }
 
   private safeHook(fn: (() => void) | undefined): void {
@@ -368,7 +395,7 @@ export class SessionEngine {
   submitAnswer(
     playerId: string,
     questionId: string,
-    optionId: string,
+    value: AnswerValue,
   ): EngineResult<AnswerEffect> {
     const player = this.players.get(playerId);
     if (!player) return invalidTyped(ErrorCodes.INTERNAL, 'Unknown player');
@@ -385,8 +412,9 @@ export class SessionEngine {
     if (player.answers.has(questionId)) {
       return invalidTyped(ErrorCodes.ALREADY_ANSWERED, 'Already answered');
     }
-    if (!q.options.some((o) => o.id === optionId)) {
-      return invalidTyped(ErrorCodes.OPTION_INVALID, 'Unknown option');
+    const prepared = prepareAnswer(q, value);
+    if (!prepared.ok) {
+      return invalidTyped(prepared.code, prepared.message);
     }
     const now = this.scheduler.now();
     if (this.questionEndsAt !== null && now > this.questionEndsAt + LATE_ANSWER_GRACE_MS) {
@@ -395,13 +423,13 @@ export class SessionEngine {
 
     const responseMs = Math.max(0, now - (this.questionStartedAt ?? now));
     player.answers.set(questionId, {
-      optionId,
+      value: prepared.value,
       responseMs,
       pointsAwarded: 0,
       correct: null,
     });
 
-    const effect: AnswerEffect = { playerId, questionId, optionId, responseMs };
+    const effect: AnswerEffect = { playerId, questionId, value: prepared.value, responseMs };
     this.safeHook(() => this.hooks.onAnswer?.(effect));
 
     this.emitProgress();
@@ -431,12 +459,6 @@ export class SessionEngine {
     this.state = 'REVEAL';
     this.questionEndsAt = null;
 
-    const correctOptionIds = q.options.filter((o) => o.isCorrect).map((o) => o.id);
-    const correctSet = new Set(correctOptionIds);
-
-    const counts = new Map<string, number>();
-    for (const o of q.options) counts.set(o.id, 0);
-
     this.lastGain.clear();
     const perPlayer: RevealEffect['perPlayer'] = [];
 
@@ -444,14 +466,8 @@ export class SessionEngine {
       if (player.kicked) continue;
       const answer = player.answers.get(q.id) ?? null;
       const answered = answer !== null;
-      if (answer) counts.set(answer.optionId, (counts.get(answer.optionId) ?? 0) + 1);
 
-      const correct =
-        q.mode === 'POLL'
-          ? null
-          : answered
-            ? correctSet.has(answer!.optionId)
-            : false;
+      const { correct, creditFactor } = gradeAnswer(q.type, q.config, q.options, answer?.value ?? null);
 
       const { pointsAwarded, newStreak } = computeScore({
         mode: q.mode,
@@ -461,6 +477,7 @@ export class SessionEngine {
         responseTimeMs: answer?.responseMs ?? 0,
         timeLimitSec: q.timeLimitSec,
         previousStreak: player.streak,
+        creditFactor,
       });
 
       player.score += pointsAwarded;
@@ -474,7 +491,7 @@ export class SessionEngine {
 
       perPlayer.push({
         playerId: player.id,
-        optionId: answer?.optionId ?? null,
+        value: answer?.value ?? null,
         responseMs: answer?.responseMs ?? 0,
         correct,
         pointsAwarded,
@@ -484,25 +501,7 @@ export class SessionEngine {
     }
 
     const totalPlayers = this.activePlayers().length;
-    const totalAnswers = this.answeredCount(q.id);
-    const tallies = q.options.map((o) => {
-      const count = counts.get(o.id) ?? 0;
-      return {
-        optionId: o.id,
-        count,
-        percent: totalAnswers === 0 ? 0 : Math.round((count / totalAnswers) * 100),
-      };
-    });
-
-    const results: QuestionResults = {
-      questionId: q.id,
-      mode: q.mode,
-      correctOptionIds: q.mode === 'QUIZ' ? correctOptionIds : [],
-      tallies,
-      totalAnswers,
-      totalPlayers,
-      ...this.voterLists(q),
-    };
+    const results = buildResults(q, this.entriesFor(q), this.showVoterNames);
 
     // Broadcast: host gets the chart; each player gets only their own result.
     this.emitState();
@@ -516,9 +515,9 @@ export class SessionEngine {
       const result: PlayerResult = {
         questionId: q.id,
         mode: q.mode,
-        answered: row.optionId !== null,
+        answered: row.value !== null,
         correct: row.correct,
-        selectedOptionId: row.optionId,
+        selectedValue: row.value,
         pointsAwarded: row.pointsAwarded,
         totalScore: player.score,
         streak: player.streak,
@@ -612,30 +611,7 @@ export class SessionEngine {
   private currentResults(): QuestionResults | null {
     const q = this.currentLoaded();
     if (!q || this.state !== 'REVEAL') return null;
-    const totalAnswers = this.answeredCount(q.id);
-    const counts = new Map<string, number>();
-    for (const o of q.options) counts.set(o.id, 0);
-    for (const p of this.activePlayers()) {
-      const a = p.answers.get(q.id);
-      if (a) counts.set(a.optionId, (counts.get(a.optionId) ?? 0) + 1);
-    }
-    return {
-      questionId: q.id,
-      mode: q.mode,
-      correctOptionIds:
-        q.mode === 'QUIZ' ? q.options.filter((o) => o.isCorrect).map((o) => o.id) : [],
-      tallies: q.options.map((o) => {
-        const count = counts.get(o.id) ?? 0;
-        return {
-          optionId: o.id,
-          count,
-          percent: totalAnswers === 0 ? 0 : Math.round((count / totalAnswers) * 100),
-        };
-      }),
-      totalAnswers,
-      totalPlayers: this.activePlayers().length,
-      ...this.voterLists(q),
-    };
+    return buildResults(q, this.entriesFor(q), this.showVoterNames);
   }
 
   hostSnapshot(): HostSnapshot {
@@ -676,7 +652,7 @@ export class SessionEngine {
         mode: q.mode,
         answered: !!answer,
         correct: answer?.correct ?? (q.mode === 'POLL' ? null : false),
-        selectedOptionId: answer?.optionId ?? null,
+        selectedValue: answer?.value ?? null,
         pointsAwarded: answer?.pointsAwarded ?? 0,
         totalScore: p.score,
         streak: p.streak,
@@ -694,7 +670,7 @@ export class SessionEngine {
       serverNow: this.scheduler.now(),
       endsAt: this.questionEndsAt,
       hasAnswered: !!answer,
-      selectedOptionId: answer?.optionId ?? null,
+      selectedValue: answer?.value ?? null,
       score: p?.score ?? 0,
       streak: p?.streak ?? 0,
       rank,

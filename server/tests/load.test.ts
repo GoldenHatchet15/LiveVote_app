@@ -106,7 +106,7 @@ describe('load: 100 concurrent players, no dropped answers', () => {
           new Promise<void>((resolve) =>
             s.emit(
               'player:answer',
-              { questionId, optionId: i % 2 === 0 ? correctOptionId : wrongOptionId },
+              { questionId, value: { kind: 'option' as const, optionId: i % 2 === 0 ? correctOptionId : wrongOptionId } },
               () => resolve(),
             ),
           ),

@@ -107,6 +107,17 @@ export function registerSocketHandlers(io: TypedServer): void {
       ack(engine.setShowVoterNames(Boolean(enabled)));
     });
 
+    socket.on('host:hideResponse', ({ sessionId, playerId, hidden }, ack) => {
+      if (!socket.data.isAdmin) {
+        return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });
+      }
+      const engine = sessionManager.get(sessionId);
+      if (!engine) {
+        return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session not found' });
+      }
+      ack(engine.setHiddenResponse(playerId, Boolean(hidden)));
+    });
+
     // ---------------------------------------------------------- player
     socket.on('player:join', async (payload, ack) => {
       try {
@@ -172,7 +183,7 @@ export function registerSocketHandlers(io: TypedServer): void {
       }
     });
 
-    socket.on('player:answer', ({ questionId, optionId }, ack) => {
+    socket.on('player:answer', ({ questionId, value }, ack) => {
       const { sessionId, playerId } = socket.data;
       if (!sessionId || !playerId) {
         return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Not in a game' });
@@ -181,11 +192,11 @@ export function registerSocketHandlers(io: TypedServer): void {
       if (!engine) {
         return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session ended' });
       }
-      const result = engine.submitAnswer(playerId, questionId, optionId);
+      const result = engine.submitAnswer(playerId, questionId, value);
       if (!result.ok) {
         return ack({ ok: false, code: result.code, message: result.message });
       }
-      ack({ ok: true, acceptedOptionId: optionId });
+      ack({ ok: true, acceptedValue: result.value.value });
     });
 
     // ---------------------------------------------------------- disconnect

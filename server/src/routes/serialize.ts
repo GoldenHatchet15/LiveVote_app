@@ -1,9 +1,11 @@
 import type {
   PointsValue,
   Question,
+  QuestionConfig,
   QuestionMode,
   QuestionSet,
   QuestionSetInput,
+  QuestionType,
   TimeLimitSec,
 } from '@livevote/shared';
 import type { Prisma } from '@prisma/client';
@@ -11,6 +13,16 @@ import type { Prisma } from '@prisma/client';
 type SetWithGraph = Prisma.QuestionSetGetPayload<{
   include: { questions: { include: { options: true } } };
 }>;
+
+function parseConfig(raw: string | null): QuestionConfig {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as QuestionConfig) : {};
+  } catch {
+    return {};
+  }
+}
 
 export function serializeSet(set: SetWithGraph): QuestionSet {
   const questions: Question[] = [...set.questions]
@@ -24,6 +36,8 @@ export function serializeSet(set: SetWithGraph): QuestionSet {
         text: q.text,
         imageUrl: q.imageUrl,
         mode: q.mode as QuestionMode,
+        type: (q.type ?? 'MULTIPLE_CHOICE') as QuestionType,
+        config: parseConfig(q.config),
         options,
         correctOptionIds: [...q.options]
           .filter((o) => o.isCorrect)
@@ -59,6 +73,8 @@ export function toInput(set: SetWithGraph): QuestionSetInput {
           text: q.text,
           imageUrl: q.imageUrl ?? null,
           mode: q.mode as QuestionMode,
+          type: (q.type ?? 'MULTIPLE_CHOICE') as QuestionType,
+          config: parseConfig(q.config),
           options: options.map((o) => ({ text: o.text })),
           correctOptionIndices: options
             .map((o, i) => (o.isCorrect ? i : -1))
@@ -76,6 +92,8 @@ export function questionsCreateInput(input: QuestionSetInput) {
     text: q.text,
     imageUrl: q.imageUrl ?? null,
     mode: q.mode,
+    type: q.type,
+    config: q.config && Object.keys(q.config).length > 0 ? JSON.stringify(q.config) : null,
     timeLimitSec: q.timeLimitSec,
     points: q.points,
     order: qi,

@@ -17,6 +17,8 @@ function threeQuizSet(): LoadedSet {
     text: `Q ${id}`,
     imageUrl: null,
     mode: 'QUIZ' as const,
+    type: 'MULTIPLE_CHOICE' as const,
+    config: {},
     timeLimitSec: 20 as const,
     points: 'STANDARD' as const,
     order: Number(id.slice(1)) - 1,
@@ -66,7 +68,7 @@ describe('invalid transitions are rejected', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.startGame();
     engine.skip(); // REVEAL
-    const r = engine.submitAnswer('p0', 'q1', 'q1a');
+    const r = engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('QUESTION_NOT_ACTIVE');
   });
@@ -90,15 +92,15 @@ describe('streak accumulation and reset across questions', () => {
     const p = engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
 
     engine.startGame(); // q1
-    engine.submitAnswer('p0', 'q1', 'q1a'); // correct -> streak 1
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // correct -> streak 1
     expect(p.streak).toBe(1);
     engine.next(); // leaderboard
     engine.next(); // q2
-    engine.submitAnswer('p0', 'q2', 'q2a'); // correct -> streak 2 (+100 bonus)
+    engine.submitAnswer('p0', 'q2', { kind: 'option', optionId: 'q2a' }); // correct -> streak 2 (+100 bonus)
     expect(p.streak).toBe(2);
     engine.next();
     engine.next(); // q3
-    engine.submitAnswer('p0', 'q3', 'q3b'); // wrong -> streak resets
+    engine.submitAnswer('p0', 'q3', { kind: 'option', optionId: 'q3b' }); // wrong -> streak resets
     expect(p.streak).toBe(0);
   });
 
@@ -106,11 +108,11 @@ describe('streak accumulation and reset across questions', () => {
     const { engine } = newEngine(threeQuizSet());
     const p = engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a'); // base 1000, streak 1
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // base 1000, streak 1
     const afterQ1 = p.score;
     engine.next();
     engine.next();
-    engine.submitAnswer('p0', 'q2', 'q2a'); // base 1000 + 100 streak bonus
+    engine.submitAnswer('p0', 'q2', { kind: 'option', optionId: 'q2a' }); // base 1000 + 100 streak bonus
     expect(p.score - afterQ1).toBe(1100);
   });
 });
@@ -121,8 +123,8 @@ describe('reconnect restores player identity at the engine level', () => {
     const p = engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a'); // Ann scores
-    engine.submitAnswer('p1', 'q1', 'q1b');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // Ann scores
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' });
     const score = p.score;
     expect(score).toBeGreaterThan(0);
 
@@ -146,8 +148,8 @@ describe('reconnect restores player identity at the engine level', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
-    engine.submitAnswer('p1', 'q1', 'q1b'); // -> REVEAL
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' }); // -> REVEAL
     const snap = engine.playerSnapshot('p0');
     expect(snap.state).toBe('REVEAL');
     expect(snap.lastResult?.correct).toBe(true);
@@ -162,7 +164,7 @@ describe('kicking affects the active population', () => {
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
     engine.kick('p1'); // only Ann remains active
-    engine.submitAnswer('p0', 'q1', 'q1a'); // all active answered -> reveal
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // all active answered -> reveal
     expect(engine.state).toBe('REVEAL');
     // Kicked player is not in the leaderboard.
     expect(engine.leaderboard().some((e) => e.playerId === 'p1')).toBe(false);

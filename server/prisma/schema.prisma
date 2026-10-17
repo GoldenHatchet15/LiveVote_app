@@ -31,6 +31,8 @@ model Question {
   text         String
   imageUrl     String?
   mode         String // "POLL" | "QUIZ"
+  type         String  @default("MULTIPLE_CHOICE") // QuestionType
+  config       String? // JSON string of type-specific config
   timeLimitSec Int? // 10|20|30|60 or null
   points       String // "STANDARD" | "DOUBLE" | "NONE"
   order        Int
@@ -91,8 +93,13 @@ model Answer {
   playerId      String
   question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId    String
-  option        Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  optionId      String
+  // Option-based types reference a single option here (kept for continuity);
+  // all types also store a canonical JSON response in responseJson.
+  option         Option?  @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  optionId       String?
+  responseText   String?
+  responseNumber Float?
+  responseJson   String? // canonical AnswerValue as JSON
   answeredAt    DateTime @default(now())
   responseMs    Int      @default(0)
   pointsAwarded Int      @default(0)

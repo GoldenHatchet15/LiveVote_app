@@ -3,7 +3,9 @@ import type {
   ClientToServerEvents,
   InterServerEvents,
   PointsValue,
+  QuestionConfig,
   QuestionMode,
+  QuestionType,
   ServerToClientEvents,
   SocketData,
   TimeLimitSec,
@@ -28,6 +30,16 @@ interface Entry {
 const roomAll = (sid: string) => `session:${sid}`;
 const roomHost = (sid: string) => `host:${sid}`;
 const roomPlayer = (pid: string) => `player:${pid}`;
+
+function parseConfig(raw: string | null): QuestionConfig {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as QuestionConfig) : {};
+  } catch {
+    return {};
+  }
+}
 
 export class SessionManager {
   private entries = new Map<string, Entry>();
@@ -82,6 +94,8 @@ export class SessionManager {
         text: q.text,
         imageUrl: q.imageUrl,
         mode: q.mode as QuestionMode,
+        type: (q.type ?? 'MULTIPLE_CHOICE') as QuestionType,
+        config: parseConfig(q.config),
         timeLimitSec: (q.timeLimitSec ?? null) as TimeLimitSec,
         points: q.points as PointsValue,
         order: q.order,
@@ -165,9 +179,12 @@ export class SessionManager {
       onAnswer: (e: {
         playerId: string;
         questionId: string;
-        optionId: string;
+        value: import('@livevote/shared').AnswerValue;
         responseMs: number;
       }) => {
+        const optionId = e.value.kind === 'option' ? e.value.optionId : null;
+        const responseText = e.value.kind === 'text' ? e.value.text : null;
+        const responseNumber = e.value.kind === 'number' ? e.value.value : null;
         void prisma.answer
           .upsert({
             where: {
@@ -179,7 +196,10 @@ export class SessionManager {
             create: {
               playerId: e.playerId,
               questionId: e.questionId,
-              optionId: e.optionId,
+              optionId,
+              responseText,
+              responseNumber,
+              responseJson: JSON.stringify(e.value),
               responseMs: e.responseMs,
               pointsAwarded: 0,
             },
@@ -190,7 +210,7 @@ export class SessionManager {
       onReveal: (e: {
         perPlayer: Array<{
           playerId: string;
-          optionId: string | null;
+          value: import('@livevote/shared').AnswerValue | null;
           responseMs: number;
           pointsAwarded: number;
           newScore: number;
@@ -207,7 +227,7 @@ export class SessionManager {
                   data: { score: p.newScore, streak: p.newStreak },
                 }),
               ];
-              if (p.optionId) {
+              if (p.value !== null) {
                 ops.push(
                   prisma.answer.update({
                     where: {

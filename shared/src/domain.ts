@@ -6,6 +6,8 @@
  * truth; these types describe what crosses the wire.
  */
 
+import type { AnswerValue, QuestionConfig, QuestionType, RevealStyle } from './questionTypes.js';
+
 export type QuestionMode = 'POLL' | 'QUIZ';
 export type PointsValue = 'STANDARD' | 'DOUBLE' | 'NONE';
 export type SessionState =
@@ -34,6 +36,9 @@ export interface Question {
   text: string;
   imageUrl: string | null;
   mode: QuestionMode;
+  type: QuestionType;
+  /** Type-specific config (accepted answers, slider range, etc.). */
+  config: QuestionConfig;
   options: Option[];
   /** QUIZ only; references Option.id values. Empty for POLL questions. */
   correctOptionIds: string[];
@@ -69,6 +74,13 @@ export interface PublicQuestion {
   text: string;
   imageUrl: string | null;
   mode: QuestionMode;
+  type: QuestionType;
+  /** Player-safe config only (no correct answers). See `toPublicConfig`. */
+  config: QuestionConfig;
+  /**
+   * Options the player can pick from. For ORDERING these are already SHUFFLED
+   * (the correct order is never sent). Empty for text/number types.
+   */
   options: Option[];
   timeLimitSec: TimeLimitSec;
   points: PointsValue;
@@ -115,20 +127,73 @@ export interface OptionVoters {
   nicknames: string[];
 }
 
+/** A labelled group of voter nicknames, for non-option reveal screens. */
+export interface VoterGroup {
+  label: string;
+  nicknames: string[];
+  /** Highlight as the correct group (Quiz). */
+  correct?: boolean;
+}
+
+/** TYPE_ANSWER reveal row: a normalized answer bucket. */
+export interface TextAnswerTally {
+  normalized: string;
+  display: string;
+  count: number;
+  correct: boolean;
+}
+
+/** OPEN_ENDED answer-wall card. */
+export interface OpenEndedCard {
+  id: string;
+  text: string;
+  /** Present (host-only) when show-voter-names is on. */
+  nickname?: string;
+}
+
 export interface QuestionResults {
   questionId: string;
   mode: QuestionMode;
+  questionType: QuestionType;
   /** Present for QUIZ questions only; empty array for POLL. */
   correctOptionIds: string[];
+  /** Per-option counts (option types: MC, MULTI_SELECT, TRUE_FALSE, ORDERING). */
   tallies: OptionTally[];
   totalAnswers: number;
   totalPlayers: number;
-  /**
-   * Per-option voter nicknames (host-only). Present only when "show voter
-   * names" is enabled for the session; omitted entirely when off.
-   */
+  /** % of answers that were fully correct (Quiz types). */
+  percentCorrect?: number;
+
+  // ---- type-specific reveal payloads ----
+  /** TYPE_ANSWER: accepted-answer buckets + common wrong answers. */
+  textAnswers?: TextAnswerTally[];
+  /** OPEN_ENDED. Either words (WORD_CLOUD) or cards (ANSWER_WALL). */
+  openEnded?: {
+    style: RevealStyle;
+    words?: { word: string; count: number }[];
+    cards?: OpenEndedCard[];
+  };
+  /** SLIDER distribution. */
+  slider?: {
+    min: number;
+    max: number;
+    unit: string | null;
+    values: number[];
+    correctValue: number | null;
+    average: number;
+    median: number;
+  };
+  /** RATING distribution. */
+  rating?: { scale: number; counts: { value: number; count: number }[]; average: number };
+  /** ORDERING: the correct order revealed. */
+  ordering?: { correctOrder: { optionId: string; text: string }[] };
+
+  // ---- show-voter-names (host-only; present only when enabled) ----
+  /** Per-option voter nicknames (option types). */
   voters?: OptionVoters[];
-  /** Nicknames of active players who did not answer. Present only when on. */
+  /** Grouped voter nicknames for non-option types (Correct/Incorrect, etc.). */
+  voterGroups?: VoterGroup[];
+  /** Nicknames of active players who did not answer. */
   noAnswer?: string[];
 }
 
@@ -138,7 +203,7 @@ export interface PlayerResult {
   mode: QuestionMode;
   answered: boolean;
   correct: boolean | null; // null for POLL (no notion of correct)
-  selectedOptionId: string | null;
+  selectedValue: AnswerValue | null;
   pointsAwarded: number;
   totalScore: number;
   streak: number;

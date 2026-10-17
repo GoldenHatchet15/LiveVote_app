@@ -31,8 +31,8 @@ describe('show voter names — OFF by default', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
-    engine.submitAnswer('p1', 'q1', 'q1b'); // -> reveal
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' }); // -> reveal
     const results = revealPayload(emitter);
     expect(results.voters).toBeUndefined();
     expect(results.noAnswer).toBeUndefined();
@@ -51,9 +51,9 @@ describe('show voter names — ON', () => {
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.addPlayer({ id: 'p2', nickname: 'Cy', reconnectToken: 't2' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a'); // correct
-    engine.submitAnswer('p1', 'q1', 'q1a'); // correct
-    engine.submitAnswer('p2', 'q1', 'q1b'); // wrong -> reveal
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // correct
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1a' }); // correct
+    engine.submitAnswer('p2', 'q1', { kind: 'option', optionId: 'q1b' }); // wrong -> reveal
 
     const results = revealPayload(emitter);
     expect(results.voters).toBeDefined();
@@ -70,7 +70,7 @@ describe('show voter names — ON', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Zed', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     scheduler.advance(20_000); // Zed never answered -> timer reveal
     const results = revealPayload(emitter);
     expect(results.noAnswer).toEqual(['Zed']);
@@ -81,8 +81,8 @@ describe('show voter names — ON', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'p1', 'p1a');
-    engine.submitAnswer('p1', 'p1', 'p1a'); // -> reveal
+    engine.submitAnswer('p0', 'p1', { kind: 'option', optionId: 'p1a' });
+    engine.submitAnswer('p1', 'p1', { kind: 'option', optionId: 'p1a' }); // -> reveal
     const results = revealPayload(emitter);
     expect(results.correctOptionIds).toEqual([]);
     expect(results.voters!.find((v) => v.optionId === 'p1a')!.nicknames.sort()).toEqual([
@@ -96,8 +96,8 @@ describe('show voter names — ON', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
-    engine.submitAnswer('p1', 'q1', 'q1b');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' });
     assertNoNamesLeakToPlayers(emitter);
     // The host-only reveal is where names live.
     expect(emitter.find('reveal').at(-1)!.scope).toBe('host');
@@ -110,8 +110,8 @@ describe('per-session override', () => {
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
-    engine.submitAnswer('p1', 'q1', 'q1b'); // -> REVEAL (no names)
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' }); // -> REVEAL (no names)
     expect(revealPayload(emitter).voters).toBeUndefined();
 
     emitter.clear();

@@ -146,7 +146,7 @@ describe('50 concurrent players', () => {
         (sock, i) =>
           new Promise<void>((resolve) => {
             const optionId = i < CORRECT_COUNT ? correctOptionId : wrongOptionId;
-            sock.emit('player:answer', { questionId, optionId }, () => resolve());
+            sock.emit('player:answer', { questionId, value: { kind: 'option', optionId } }, () => resolve());
           }),
       ),
     );

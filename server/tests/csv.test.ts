@@ -22,11 +22,11 @@ describe('results CSV export (M4)', () => {
     engine.addPlayer({ id: 'p1', nickname: 'Bob', reconnectToken: 't1' });
 
     engine.startGame(); // q1
-    engine.submitAnswer('p0', 'q1', 'q1a'); // Ann correct
-    engine.submitAnswer('p1', 'q1', 'q1b'); // Bob wrong -> auto reveal
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' }); // Ann correct
+    engine.submitAnswer('p1', 'q1', { kind: 'option', optionId: 'q1b' }); // Bob wrong -> auto reveal
     engine.next(); // leaderboard
     engine.next(); // q2
-    engine.submitAnswer('p0', 'q2', 'q2a'); // Ann correct
+    engine.submitAnswer('p0', 'q2', { kind: 'option', optionId: 'q2a' }); // Ann correct
     scheduler.advance(20_000); // Bob never answered -> timer reveals q2
 
     const csv = buildResultsCsv(engine, set);
@@ -39,14 +39,15 @@ describe('results CSV export (M4)', () => {
       'question_number',
       'question_text',
       'mode',
-      'selected_option',
+      'type',
+      'response',
       'correct',
       'response_ms',
       'points_awarded',
     ]);
     expect(rows).toHaveLength(1 + 4);
 
-    const idx = { player: 0, score: 1, qnum: 2, qtext: 3, mode: 4, sel: 5, correct: 6, points: 8 };
+    const idx = { player: 0, score: 1, qnum: 2, qtext: 3, mode: 4, sel: 6, correct: 7, points: 9 };
     const body = rows.slice(1);
     const annQ1 = body.find((r) => r[idx.player] === 'Ann' && r[idx.qnum] === '1')!;
     const bobQ1 = body.find((r) => r[idx.player] === 'Bob' && r[idx.qnum] === '1')!;
@@ -81,7 +82,7 @@ describe('results CSV export (M4)', () => {
     });
     engine.addPlayer({ id: 'p0', nickname: 'Ann', reconnectToken: 't0' });
     engine.startGame();
-    engine.submitAnswer('p0', 'q1', 'q1a');
+    engine.submitAnswer('p0', 'q1', { kind: 'option', optionId: 'q1a' });
     const csv = buildResultsCsv(engine, set);
     expect(csv).toContain('"Hello, ""world"""');
   });
