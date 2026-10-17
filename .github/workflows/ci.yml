@@ -22,13 +22,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
-
+      # The Prisma client must be generated before anything that typechecks or
+      # builds against it (serialize.ts, manager.ts use generated Prisma types).
       - name: Generate Prisma client & migrate test DB
         run: |
           npm run db:generate -w server
           npm run db:migrate -w server
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Build (shared, server, client)
         run: npm run build
