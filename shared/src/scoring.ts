@@ -37,6 +37,12 @@ export interface ScoreInput {
   timeLimitSec: TimeLimitSec;
   /** The player's streak BEFORE this question. */
   previousStreak: number;
+  /**
+   * 0..1 multiplier on the base points, for graded types (SLIDER partial
+   * credit). Defaults to 1 for binary-correct types. Never affects the streak
+   * bonus. A correct answer always has creditFactor > 0.
+   */
+  creditFactor?: number;
 }
 
 export interface ScoreResult {
@@ -95,7 +101,8 @@ export function computeScore(input: ScoreInput): ScoreResult {
     return { pointsAwarded: 0, newStreak };
   }
 
-  const base = basePoints(input.responseTimeMs, input.timeLimitSec);
+  const factor = input.creditFactor ?? 1;
+  const base = Math.round(basePoints(input.responseTimeMs, input.timeLimitSec) * factor);
   const pointsAwarded = base * multiplier + streakBonus(newStreak);
   return { pointsAwarded, newStreak };
 }
