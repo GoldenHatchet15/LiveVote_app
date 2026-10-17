@@ -1,7 +1,8 @@
 import { useState } from 'react';
 
-/** Twemoji (CC-BY 4.0) SVG for consistent rendering across devices; falls back
- *  to the native glyph if the asset can't be loaded. */
+/** Bundled Twemoji (CC-BY 4.0) SVG for consistent rendering across devices (same
+ *  asset on the projector and every phone); falls back to the native glyph if
+ *  the asset can't be loaded. Assets live in client/public/twemoji/. */
 function codepoints(emoji: string): string {
   return Array.from(emoji)
     .map((c) => c.codePointAt(0)!.toString(16))
@@ -18,7 +19,7 @@ export function Emoji({ emoji, className }: { emoji: string; className?: string 
       </span>
     );
   }
-  const url = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${codepoints(emoji)}.svg`;
+  const url = `/twemoji/${codepoints(emoji)}.svg`;
   return (
     <img
       src={url}

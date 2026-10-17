@@ -272,11 +272,12 @@ players look different; colours repeat only once the palette is exhausted.
   their emoji back into the pool.
 - The **CSV export** includes each player's emoji and colour.
 
-**Emoji artwork:** rendered with [Twemoji](https://github.com/twitter/twemoji)
-for identical appearance on the projector and every phone. Twemoji graphics are
-© Twitter, Inc. and other contributors, licensed under
-**[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. If an emoji asset
-can't be loaded, the native glyph is shown instead.
+**Emoji artwork:** the 30 avatar SVGs are **bundled in the repo**
+(`client/public/twemoji/`) from [Twemoji](https://github.com/twitter/twemoji) so
+they render identically on the projector and every phone, with no network
+dependency. Twemoji graphics are © Twitter, Inc. and other contributors,
+licensed under **[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. If
+an asset can't be loaded, the native glyph is shown instead.
 
 ## Project layout
 

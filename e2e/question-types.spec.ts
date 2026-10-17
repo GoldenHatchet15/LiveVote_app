@@ -115,6 +115,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
   // Q1 MULTIPLE_CHOICE
   await host.getByTestId('host-primary').click();
   await expect(p1.getByTestId('answer-0')).toBeVisible();
+  await p1.screenshot({ path: 'screenshots/player-multiple_choice.png' });
   await p1.getByTestId('answer-0').click();
   await p2.getByTestId('answer-1').click();
   await expect(host.getByTestId('reveal-option').first()).toBeVisible();
@@ -125,6 +126,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
   await expect(p1.getByTestId('answer-0')).toBeVisible();
   await p1.getByTestId('answer-0').click();
   await p1.getByTestId('answer-2').click();
+  await p1.screenshot({ path: 'screenshots/player-multi_select.png' });
   await p1.getByTestId('answer-submit').click();
   await p2.getByTestId('answer-1').click();
   await p2.getByTestId('answer-submit').click();
@@ -134,6 +136,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
 
   // Q3 TRUE_FALSE
   await expect(p1.getByTestId('answer-0')).toBeVisible();
+  await p1.screenshot({ path: 'screenshots/player-true_false.png' });
   await p1.getByTestId('answer-0').click();
   await p2.getByTestId('answer-3').click();
   await expect(host.getByTestId('reveal-option').first()).toBeVisible();
@@ -143,6 +146,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
   // Q4 TYPE_ANSWER
   await expect(p1.getByTestId('text-input')).toBeVisible();
   await p1.getByTestId('text-input').fill('hola');
+  await p1.screenshot({ path: 'screenshots/player-type_answer.png' });
   await p1.getByTestId('answer-submit').click();
   await p2.getByTestId('text-input').fill('bonjour');
   await p2.getByTestId('answer-submit').click();
@@ -153,6 +157,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
   // Q5 OPEN_ENDED (poll -> word cloud)
   await expect(p1.getByTestId('text-input')).toBeVisible();
   await p1.getByTestId('text-input').fill('great');
+  await p1.screenshot({ path: 'screenshots/player-open_ended.png' });
   await p1.getByTestId('answer-submit').click();
   await p2.getByTestId('text-input').fill('great');
   await p2.getByTestId('answer-submit').click();
@@ -163,6 +168,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
   // Q6 SLIDER
   await expect(p1.getByTestId('slider-input')).toBeVisible();
   await setSlider(p1, '1969');
+  await p1.screenshot({ path: 'screenshots/player-slider.png' });
   await p1.getByTestId('answer-submit').click();
   await setSlider(p2, '1980');
   await p2.getByTestId('answer-submit').click();
@@ -172,6 +178,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
 
   // Q7 ORDERING
   await expect(p1.getByTestId('order-item-0')).toBeVisible();
+  await p1.screenshot({ path: 'screenshots/player-ordering.png' });
   await p1.getByTestId('answer-submit').click();
   await p2.getByTestId('answer-submit').click();
   await expect(host.getByText('Correct order')).toBeVisible();
@@ -180,6 +187,7 @@ test('mixed set: one question of every type plays end to end (names ON)', async 
 
   // Q8 RATING (poll)
   await expect(p1.getByTestId('rating-5')).toBeVisible();
+  await p1.screenshot({ path: 'screenshots/player-rating.png' });
   await p1.getByTestId('rating-5').click();
   await p1.getByTestId('answer-submit').click();
   await p2.getByTestId('rating-3').click();
