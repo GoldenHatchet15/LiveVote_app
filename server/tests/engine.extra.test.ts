@@ -25,7 +25,13 @@ function threeQuizSet(): LoadedSet {
       { id: `${id}b`, text: 'wrong', index: 1, isCorrect: false },
     ],
   });
-  return { id: 'three', title: 'Three', description: null, questions: [q('q1'), q('q2'), q('q3')] };
+  return {
+    id: 'three',
+    title: 'Three',
+    description: null,
+    showVoterNames: false,
+    questions: [q('q1'), q('q2'), q('q3')],
+  };
 }
 
 describe('invalid transitions are rejected', () => {
@@ -66,7 +72,13 @@ describe('invalid transitions are rejected', () => {
   });
 
   it('refuses to start a set with no questions', () => {
-    const empty: LoadedSet = { id: 'e', title: 'Empty', description: null, questions: [] };
+    const empty: LoadedSet = {
+      id: 'e',
+      title: 'Empty',
+      description: null,
+      showVoterNames: false,
+      questions: [],
+    };
     const { engine } = newEngine(empty);
     expect(engine.startGame().ok).toBe(false);
   });

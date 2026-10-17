@@ -14,6 +14,7 @@ import {
 const validQuiz: QuestionSetInput = {
   title: 'Sample',
   description: 'desc',
+  showVoterNames: false,
   questions: [
     {
       text: 'Capital of France?',
