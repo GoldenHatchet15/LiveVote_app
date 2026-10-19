@@ -186,6 +186,13 @@ export interface QuestionResults {
   totalPlayers: number;
   /** % of answers that were fully correct (Quiz types). */
   percentCorrect?: number;
+  /**
+   * Winning answer(s) for a POLL reveal, computed server-side AFTER moderation
+   * (hidden answers / WRITE_IN merges excluded). `keys` are type-specific tokens
+   * (optionId, String(ratingValue), word, or WRITE_IN group key). Absent when
+   * nobody answered or the type has no single winner (SLIDER, OPEN_ENDED wall).
+   */
+  winners?: { keys: string[]; tie: boolean; count: number };
 
   // ---- type-specific reveal payloads ----
   /** TYPE_ANSWER: accepted-answer buckets + common wrong answers. */

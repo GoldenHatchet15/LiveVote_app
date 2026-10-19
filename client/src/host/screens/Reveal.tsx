@@ -113,6 +113,17 @@ export function Reveal({
   );
 }
 
+function WinnerBadge({ tie }: { tie?: boolean }) {
+  return (
+    <span
+      data-testid="winner-badge"
+      className="inline-flex items-center gap-1 rounded-full bg-shape-yellow px-2 py-0.5 text-sm font-bold text-ink shadow"
+    >
+      👑 {tie ? 'Tie' : 'Top answer'}
+    </span>
+  );
+}
+
 function OptionBars({
   question,
   results,
@@ -128,6 +139,7 @@ function OptionBars({
   const isQuiz = results.mode === 'QUIZ';
   const maxCount = Math.max(1, ...results.tallies.map((t) => t.count));
   const votersByOption = new Map((results.voters ?? []).map((v) => [v.optionId, v.voters]));
+  const winnerKeys = new Set(results.winners?.keys ?? []);
   return (
     <>
       {question.options.map((opt) => {
@@ -141,8 +153,9 @@ function OptionBars({
             key={opt.id}
             data-testid="reveal-option"
             data-correct={isQuiz && isCorrect ? 'true' : 'false'}
+            data-winner={!hideResults && winnerKeys.has(opt.id) ? 'true' : 'false'}
             data-count={count}
-            className="transition-opacity"
+            className={`rounded-xl transition ${!hideResults && winnerKeys.has(opt.id) ? 'bg-shape-yellow/10 p-2 ring-2 ring-shape-yellow/50' : ''}`}
             style={{ opacity: dim ? 0.5 : 1 }}
           >
             <div className="flex items-center gap-4">
@@ -160,6 +173,7 @@ function OptionBars({
                       ✓ Correct
                     </span>
                   )}
+                  {!hideResults && winnerKeys.has(opt.id) && <WinnerBadge tie={results.winners?.tie} />}
                 </div>
                 <div className="h-12 overflow-hidden rounded-xl bg-white/10">
                   <motion.div
@@ -251,18 +265,24 @@ function OpenEndedView({
   if (oe.style === 'WORD_CLOUD') {
     const words = oe.words ?? [];
     const max = Math.max(1, ...words.map((w) => w.count));
+    const winnerKeys = new Set(results.winners?.keys ?? []);
     return (
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 p-4">
-        {words.map((w) => (
-          <span
-            key={w.word}
-            data-testid="cloud-word"
-            className="font-display font-black text-white"
-            style={{ fontSize: `${1 + (w.count / max) * 2.5}rem`, opacity: 0.55 + (w.count / max) * 0.45 }}
-          >
-            {w.word}
-          </span>
-        ))}
+        {words.map((w) => {
+          const win = winnerKeys.has(w.word);
+          return (
+            <span
+              key={w.word}
+              data-testid="cloud-word"
+              data-winner={win ? 'true' : 'false'}
+              className={`font-display font-black ${win ? 'text-shape-yellow' : 'text-white'}`}
+              style={{ fontSize: `${1 + (w.count / max) * 2.5}rem`, opacity: win ? 1 : 0.55 + (w.count / max) * 0.45 }}
+            >
+              {win && <span className="mr-1 text-2xl align-middle">👑</span>}
+              {w.word}
+            </span>
+          );
+        })}
         {words.length === 0 && <p className="text-white/40">No responses yet.</p>}
       </div>
     );
@@ -334,19 +354,24 @@ function RatingView({ results, showNames }: { results: QuestionResults; showName
   const r = results.rating;
   if (!r) return null;
   const max = Math.max(1, ...r.counts.map((c) => c.count));
+  const winnerKeys = new Set(results.winners?.keys ?? []);
   return (
     <div>
       <div className="flex items-end justify-center gap-3" style={{ height: '14rem' }}>
-        {r.counts.map((c) => (
-          <div key={c.value} className="flex w-16 flex-col items-center justify-end">
-            <span className="mb-1 font-bold text-white">{c.count}</span>
-            <div
-              className="w-full rounded-t-lg bg-shape-yellow"
-              style={{ height: `${(c.count / max) * 100}%`, minHeight: c.count > 0 ? 8 : 0 }}
-            />
-            <span className="mt-2 font-black text-white/70">{c.value}</span>
-          </div>
-        ))}
+        {r.counts.map((c) => {
+          const win = winnerKeys.has(String(c.value));
+          return (
+            <div key={c.value} className="flex w-16 flex-col items-center justify-end">
+              {win && <span className="mb-1 text-lg">👑</span>}
+              <span className="mb-1 font-bold text-white">{c.count}</span>
+              <div
+                className={`w-full rounded-t-lg bg-shape-yellow ${win ? 'ring-2 ring-white/70' : ''}`}
+                style={{ height: `${(c.count / max) * 100}%`, minHeight: c.count > 0 ? 8 : 0 }}
+              />
+              <span className="mt-2 font-black text-white/70">{c.value}</span>
+            </div>
+          );
+        })}
       </div>
       <p className="mt-6 text-center text-2xl text-white/80">
         Average <span className="font-black text-white">{r.average}</span> / {r.scale}
@@ -374,6 +399,7 @@ function WriteInView({
   if (!wi) return null;
   const gated = wi.reviewBeforeReveal === true && !reviewed;
   const groups = wi.groups;
+  const winnerKeys = new Set(results.winners?.keys ?? []);
   const max = Math.max(1, ...groups.map((g) => g.count));
   const top = groups.slice(0, 8);
   const other = groups.slice(8);
@@ -391,7 +417,10 @@ function WriteInView({
   const Bar = (g: WriteInGroupResult) => (
     <div key={g.key} data-testid="write-in-group" data-count={g.count} data-key={g.key}>
       <div className="flex items-center gap-3">
-        <span className="w-48 shrink-0 truncate text-right text-xl font-semibold text-white">{g.label}</span>
+        <span className="flex w-48 shrink-0 items-center justify-end gap-2 truncate text-right text-xl font-semibold text-white">
+          {winnerKeys.has(g.key) && <WinnerBadge tie={results.winners?.tie} />}
+          {g.label}
+        </span>
         <div className="h-10 flex-1 overflow-hidden rounded-lg bg-white/10">
           <motion.div
             className="h-full rounded-lg bg-shape-blue"

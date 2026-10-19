@@ -15,6 +15,7 @@ import {
   WRITE_IN_MAX,
   type AnswerValue,
   type QuestionResults,
+  type QuestionType,
   type Voter,
   type VoterGroup,
   type WriteInSubmission,
@@ -392,7 +393,45 @@ export function buildResults(
     }
   }
 
+  // Winner(s) for a POLL reveal, from post-moderation counts.
+  if (q.mode === 'POLL') {
+    const w = computeWinners(q.type, base);
+    if (w) base.winners = w;
+  }
+
   return base;
+}
+
+/** Top answer(s) by vote count (after moderation). Undefined if no votes. */
+function computeWinners(
+  type: QuestionType,
+  base: QuestionResults,
+): { keys: string[]; tie: boolean; count: number } | undefined {
+  let items: { key: string; count: number }[] = [];
+  switch (type) {
+    case 'MULTIPLE_CHOICE':
+    case 'MULTI_SELECT':
+    case 'TRUE_FALSE':
+      items = base.tallies.map((t) => ({ key: t.optionId, count: t.count }));
+      break;
+    case 'RATING':
+      items = (base.rating?.counts ?? []).map((c) => ({ key: String(c.value), count: c.count }));
+      break;
+    case 'WRITE_IN':
+      items = (base.writeIn?.groups ?? []).map((g) => ({ key: g.key, count: g.count }));
+      break;
+    case 'OPEN_ENDED':
+      if (base.openEnded?.style === 'WORD_CLOUD') {
+        items = (base.openEnded.words ?? []).map((w) => ({ key: w.word, count: w.count }));
+      }
+      break;
+    default:
+      return undefined; // SLIDER / ORDERING / quiz: no single poll winner
+  }
+  const max = Math.max(0, ...items.map((i) => i.count));
+  if (max <= 0) return undefined;
+  const keys = items.filter((i) => i.count === max).map((i) => i.key);
+  return { keys, tie: keys.length > 1, count: max };
 }
 
 function groupCorrectIncorrect(
