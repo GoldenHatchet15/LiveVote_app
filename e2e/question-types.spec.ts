@@ -7,6 +7,7 @@ function mixedSetBody(title: string) {
     title,
     description: 'All question types',
     showVoterNames: true,
+    showResultsSummary: false,
     questions: [
       {
         text: 'Capital of Japan?',

@@ -14,6 +14,7 @@ function writeInSet(
     title: 'Write-in',
     description: null,
     showVoterNames,
+    showResultsSummary: true,
     questions: [
       {
         id: 'w1',

@@ -9,11 +9,12 @@ import { Lobby } from './screens/Lobby';
 import { Question } from './screens/Question';
 import { Reveal } from './screens/Reveal';
 import { Leaderboard } from './screens/Leaderboard';
+import { Summary } from './screens/Summary';
 import { Ended } from './screens/Ended';
 
 export function HostApp() {
   const { sessionId } = useParams();
-  const { state, action, kick, setVoterNames, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup } =
+  const { state, action, kick, setVoterNames, setShowSummary, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup } =
     useHostSession(sessionId ?? '');
   const [baseUrl, setBaseUrl] = useState<string>(() =>
     typeof window !== 'undefined' ? window.location.origin : '',
@@ -44,6 +45,7 @@ export function HostApp() {
         QUESTION: 'SKIP',
         REVEAL: 'NEXT',
         LEADERBOARD: 'NEXT',
+        SUMMARY: 'NEXT',
       };
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
         const a = advance[state.state];
@@ -128,6 +130,7 @@ export function HostApp() {
         />
       )}
       {state.state === 'LEADERBOARD' && <Leaderboard entries={state.leaderboard} />}
+      {state.state === 'SUMMARY' && <Summary summary={state.summary ?? []} />}
       {state.state === 'ENDED' && state.ended && (
         <Ended podium={state.ended.podium} full={state.ended.full} csvUrl={csvUrl} />
       )}
@@ -138,11 +141,13 @@ export function HostApp() {
         muted={muted}
         hideResults={hideResults}
         showVoterNames={state.showVoterNames}
+        showResultsSummary={state.showResultsSummary}
         onAction={action}
         onKick={kick}
         onToggleMute={toggleMute}
         onToggleHide={() => setHideResults((v) => !v)}
         onToggleVoterNames={() => setVoterNames(!state.showVoterNames)}
+        onToggleSummary={() => setShowSummary(!state.showResultsSummary)}
         csvUrl={csvUrl}
       />
     </div>

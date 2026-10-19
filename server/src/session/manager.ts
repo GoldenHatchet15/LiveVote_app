@@ -94,6 +94,7 @@ export class SessionManager {
       title: set.title,
       description: set.description,
       showVoterNames: set.showVoterNames,
+      showResultsSummary: set.showResultsSummary,
       questions: set.questions.map((q) => ({
         id: q.id,
         text: q.text,

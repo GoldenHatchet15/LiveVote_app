@@ -86,7 +86,9 @@ describe('state machine', () => {
     poll.engine.startGame();
     poll.engine.skip();
     expect(poll.engine.state).toBe('REVEAL');
-    // Only one poll question -> next ends the game, no leaderboard state.
+    // Poll with a results summary enabled -> REVEAL -> SUMMARY -> ENDED (no leaderboard).
+    expect(poll.engine.next().ok).toBe(true);
+    expect(poll.engine.state).toBe('SUMMARY');
     expect(poll.engine.next().ok).toBe(true);
     expect(poll.engine.state).toBe('ENDED');
   });

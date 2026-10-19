@@ -53,6 +53,7 @@ export function serializeSet(set: SetWithGraph): QuestionSet {
     title: set.title,
     description: set.description,
     showVoterNames: set.showVoterNames,
+    showResultsSummary: set.showResultsSummary,
     createdAt: set.createdAt.toISOString(),
     updatedAt: set.updatedAt.toISOString(),
     questions,
@@ -65,6 +66,7 @@ export function toInput(set: SetWithGraph): QuestionSetInput {
     title: set.title,
     description: set.description,
     showVoterNames: set.showVoterNames,
+    showResultsSummary: set.showResultsSummary,
     questions: [...set.questions]
       .sort((a, b) => a.order - b.order)
       .map((q) => {

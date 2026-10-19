@@ -6,6 +6,7 @@ import type {
   PlayerSummary,
   PublicQuestion,
   QuestionResults,
+  QuestionSummary,
   SessionState,
 } from '@livevote/shared';
 import { createSocket, type LiveSocket } from '../lib/socket';
@@ -29,6 +30,8 @@ export interface HostState {
   leaderboard: LeaderboardEntry[];
   ended: { podium: LeaderboardEntry[]; full: LeaderboardEntry[] } | null;
   showVoterNames: boolean;
+  showResultsSummary: boolean;
+  summary: QuestionSummary[] | null;
 }
 
 const initial = (sessionId: string): HostState => ({
@@ -50,6 +53,8 @@ const initial = (sessionId: string): HostState => ({
   leaderboard: [],
   ended: null,
   showVoterNames: false,
+  showResultsSummary: true,
+  summary: null,
 });
 
 export function useHostSession(sessionId: string) {
@@ -103,6 +108,8 @@ export function useHostSession(sessionId: string) {
           results: snap.results,
           leaderboard: snap.leaderboard,
           showVoterNames: snap.showVoterNames,
+          showResultsSummary: snap.showResultsSummary,
+          summary: snap.summary,
         });
       });
     };
@@ -135,6 +142,7 @@ export function useHostSession(sessionId: string) {
     socket.on('reveal', (p) => patch({ results: p.results }));
     socket.on('voterNames:update', (p) => patch({ showVoterNames: p.enabled }));
     socket.on('leaderboard', (p) => patch({ leaderboard: p.full }));
+    socket.on('session:summary', (p) => patch({ summary: p.questions }));
     socket.on('session:ended', (p) =>
       patch({ ended: { podium: p.podium, full: p.full }, leaderboard: p.full }),
     );
@@ -180,5 +188,17 @@ export function useHostSession(sessionId: string) {
     [sessionId],
   );
 
-  return { state: s, action, kick, setVoterNames, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup };
+  const setShowSummary = useCallback(
+    (enabled: boolean) => {
+      // Host-only setting (players never see it), so update optimistically and
+      // roll back only if the server rejects it.
+      patch({ showResultsSummary: enabled });
+      socketRef.current?.emit('host:setShowSummary', { sessionId, enabled }, (res) => {
+        if (!res?.ok) patch({ showResultsSummary: !enabled });
+      });
+    },
+    [patch, sessionId],
+  );
+
+  return { state: s, action, kick, setVoterNames, setShowSummary, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup };
 }

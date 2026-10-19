@@ -6,6 +6,7 @@ function writeInBody(title: string) {
     title,
     description: 'Write-in',
     showVoterNames: true,
+    showResultsSummary: false,
     questions: [
       {
         text: 'Which student is most likely to ride a skateboard to class?',

@@ -65,6 +65,7 @@ export function makeQuizSet(): LoadedSet {
     title: 'Test Quiz',
     description: null,
     showVoterNames: false,
+    showResultsSummary: true,
     questions: [
       {
         id: 'q1',
@@ -107,6 +108,7 @@ export function makePollSet(): LoadedSet {
     title: 'Test Poll',
     description: null,
     showVoterNames: false,
+    showResultsSummary: true,
     questions: [
       {
         id: 'p1',

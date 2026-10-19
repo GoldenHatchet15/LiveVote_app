@@ -127,6 +127,22 @@ export function SetEditor({ mode }: { mode: 'new' | 'edit' }) {
             </span>
           </span>
         </label>
+        <label className="mt-3 flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            data-testid="show-results-summary"
+            className="mt-1 h-5 w-5 accent-brand"
+            checked={state.showResultsSummary}
+            onChange={(e) => update({ showResultsSummary: e.target.checked })}
+          />
+          <span>
+            <span className="font-semibold">Show results summary at the end</span>
+            <span className="block text-sm text-ink/50">
+              After the last question, show a recap of each poll question's top
+              answer. On by default; the host can skip it during the session.
+            </span>
+          </span>
+        </label>
       </div>
 
       {showErrors && validation && validation.topLevel.length > 0 && (

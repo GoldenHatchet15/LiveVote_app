@@ -10,6 +10,8 @@ function primaryFor(state: SessionState): { label: string; action: HostAction } 
     case 'REVEAL':
     case 'LEADERBOARD':
       return { label: 'Next ⏭', action: 'NEXT' };
+    case 'SUMMARY':
+      return { label: 'Finish ⏭', action: 'NEXT' };
     default:
       return null;
   }
@@ -21,11 +23,13 @@ export function Controls({
   muted,
   hideResults,
   showVoterNames,
+  showResultsSummary,
   onAction,
   onKick,
   onToggleMute,
   onToggleHide,
   onToggleVoterNames,
+  onToggleSummary,
   csvUrl,
 }: {
   state: SessionState;
@@ -33,11 +37,13 @@ export function Controls({
   muted: boolean;
   hideResults: boolean;
   showVoterNames: boolean;
+  showResultsSummary: boolean;
   onAction: (a: HostAction) => void;
   onKick: (playerId: string) => void;
   onToggleMute: () => void;
   onToggleHide: () => void;
   onToggleVoterNames: () => void;
+  onToggleSummary: () => void;
   csvUrl: string;
 }) {
   const [showPlayers, setShowPlayers] = useState(false);
@@ -81,6 +87,19 @@ export function Controls({
               title="Show voter names on results (N)"
             >
               Names: {showVoterNames ? 'On' : 'Off'}
+            </button>
+          )}
+          {state !== 'ENDED' && state !== 'SUMMARY' && (
+            <button
+              data-testid="toggle-summary"
+              aria-pressed={showResultsSummary}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                showResultsSummary ? 'bg-brand text-white hover:bg-brand-700' : 'bg-white/10 hover:bg-white/20'
+              }`}
+              onClick={onToggleSummary}
+              title="Show the results summary at the end of the session"
+            >
+              Summary: {showResultsSummary ? 'On' : 'Off'}
             </button>
           )}
           <a

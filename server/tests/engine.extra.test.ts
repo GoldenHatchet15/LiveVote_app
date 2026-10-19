@@ -32,6 +32,7 @@ function threeQuizSet(): LoadedSet {
     title: 'Three',
     description: null,
     showVoterNames: false,
+    showResultsSummary: true,
     questions: [q('q1'), q('q2'), q('q3')],
   };
 }
@@ -79,6 +80,7 @@ describe('invalid transitions are rejected', () => {
       title: 'Empty',
       description: null,
       showVoterNames: false,
+    showResultsSummary: true,
       questions: [],
     };
     const { engine } = newEngine(empty);

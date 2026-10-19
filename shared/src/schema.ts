@@ -233,6 +233,8 @@ export const questionSetInputSchema = z.object({
   description: z.string().trim().max(1000).nullable().optional().default(null),
   /** Show which players chose each option on the host results screen. */
   showVoterNames: z.boolean().optional().default(false),
+  /** Show the end-of-session poll results summary. */
+  showResultsSummary: z.boolean().optional().default(true),
   questions: z.array(questionInputSchema).default([]),
 });
 

@@ -15,6 +15,7 @@ export type SessionState =
   | 'QUESTION'
   | 'REVEAL'
   | 'LEADERBOARD'
+  | 'SUMMARY'
   | 'ENDED';
 
 /** Allowed per-question time limits, in seconds. `null` means no limit. */
@@ -57,9 +58,42 @@ export interface QuestionSet {
    * OFF by default; overridable per session without changing the saved set.
    */
   showVoterNames: boolean;
+  /** Show the end-of-session Results Summary for poll questions (default true). */
+  showResultsSummary: boolean;
   createdAt: string;
   updatedAt: string;
   questions: Question[];
+}
+
+/** One winning answer on the results summary. */
+export interface SummaryWinner {
+  label: string;
+  count: number;
+  percent: number;
+  /** Host-only, present when show-voter-names is on. */
+  voters?: Voter[];
+}
+
+/** Host summary card for one poll question. */
+export interface QuestionSummary {
+  questionId: string;
+  index: number;
+  text: string;
+  type: QuestionType;
+  winners: SummaryWinner[]; // tied -> multiple; empty -> no votes
+  tie: boolean;
+  totalAnswers: number;
+}
+
+/** Player-facing summary card: top answers + the player's own answer. */
+export interface PlayerQuestionSummary {
+  questionId: string;
+  index: number;
+  text: string;
+  winners: { label: string; count: number; percent: number }[];
+  tie: boolean;
+  yourAnswer: string | null;
+  youMatchedTop: boolean;
 }
 
 /**

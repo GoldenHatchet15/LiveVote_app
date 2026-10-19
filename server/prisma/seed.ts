@@ -21,6 +21,7 @@ interface SeedSet {
   title: string;
   description: string;
   showVoterNames?: boolean;
+  showResultsSummary?: boolean;
   questions: SeedQuestion[];
 }
 
@@ -92,8 +93,9 @@ const QUIZ_SET: SeedSet = {
 const POLL_SET: SeedSet = {
   title: 'Icebreaker Poll',
   description: 'No right answers — just see what the room thinks.',
-  // Demonstrates the "show voter names" setting out of the box.
+  // Demonstrates "show voter names" and the end-of-session results summary.
   showVoterNames: true,
+  showResultsSummary: true,
   questions: [
     {
       text: 'How are you feeling about today’s session?',
@@ -145,6 +147,7 @@ const MIXED_SET: SeedSet = {
   title: 'Mixed Question Types',
   description: 'One of every question type — great for a feature demo.',
   showVoterNames: true,
+  showResultsSummary: true,
   questions: [
     {
       text: 'Which is the capital of Japan?',
@@ -234,6 +237,7 @@ async function createSet(set: SeedSet): Promise<void> {
       title: set.title,
       description: set.description,
       showVoterNames: set.showVoterNames ?? false,
+      showResultsSummary: set.showResultsSummary ?? true,
       questions: {
         create: set.questions.map((q, qi) => ({
           text: q.text,

@@ -11,6 +11,7 @@ export function quizSetBody(title: string) {
   return {
     title,
     description: 'E2E quiz',
+    showResultsSummary: false,
     questions: [
       {
         text: 'E2E Q1 — pick A',
@@ -36,6 +37,7 @@ export function pollSetBody(title: string) {
   return {
     title,
     description: 'E2E poll',
+    showResultsSummary: false,
     questions: [
       {
         text: 'E2E Poll — favourite?',

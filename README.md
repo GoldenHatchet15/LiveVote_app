@@ -265,6 +265,37 @@ is most likely to…" style questions.
   (the word cloud stays anonymous).
 - The seed includes a **"Mixed Question Types"** set with one of every type.
 
+### Winner highlight & results summary
+
+**Winner highlight on reveals.** On every **poll** reveal the most-voted answer
+gets a 👑 **Top answer** badge and a glow. Ties badge **every** tied answer as a
+**Tie**; if nobody answered, nothing is badged. It adapts per type — Rating
+highlights the most-chosen value, the Open-ended **word cloud** highlights the
+most frequent word, Write-in uses the post-merge/post-hide counts, and Slider
+(a distribution, not a vote) shows average/median with no single winner. Hidden
+answers never count toward a winner. Quiz questions are unaffected (they keep
+the correct-answer highlight).
+
+**End-of-session results summary.** When the last question of a session that
+contains poll questions ends, the host sees a celebratory **Results** screen —
+one card per poll question with its winning answer(s), vote count and
+percentage, flipped in with confetti. Ties list all tied answers; a question
+with no votes shows *"No votes."* When **show voter names** is on, the winning
+answer's voters appear as name tags (up to 8, then **+N more**); the host can
+click a card to **expand** it and see every voter. A **📸 Download image**
+button exports the whole summary as a PNG (rendered on a canvas, so it works
+under the app's strict CSP). In a **mixed** session the order is: results
+summary → quiz leaderboard → final podium.
+
+- **Players** see their own summary of the top answers (never other players'
+  names), with their own answer marked *"🎉 Voted with the majority!"* when it
+  matched a winning answer.
+- **Per set**: *"Show results summary at the end"* (**on by default**) in the
+  builder; the host can also **skip** it from the controls bar. Winners are
+  computed **server-side after moderation**, and the **CSV export** gains a
+  *RESULTS SUMMARY* section (winning answer, votes, %, tie) for each poll
+  question.
+
 **Scoring (Quiz mode).** `points = round(1000 × (1 − (responseTime / timeLimit) / 2))`,
 so a correct answer is worth 500–1000 depending on speed (a flat 1000 for
 untimed questions). `DOUBLE` doubles the base; `NONE` awards 0. A streak adds

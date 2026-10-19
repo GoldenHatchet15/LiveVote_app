@@ -5,19 +5,25 @@ import {
   gradeAnswer,
   isValidAvatar,
   LATE_ANSWER_GRACE_MS,
+  normalizeText,
+  normalizeWriteIn,
   PLAYER_COLORS,
+  resolveMergeKey,
   toPublicConfig,
   type AnswerValue,
   type HostSnapshot,
   type LeaderboardEntry,
   type Option,
+  type PlayerQuestionSummary,
   type PlayerResult,
   type PlayerSnapshot,
   type PlayerSummary,
   type PublicQuestion,
   type Question,
   type QuestionResults,
+  type QuestionSummary,
   type SessionState,
+  type SummaryWinner,
 } from '@livevote/shared';
 import {
   nullEmitter,
@@ -120,6 +126,8 @@ export class SessionEngine {
   questionEndsAt: number | null = null;
   /** Per-session override of the set's "show voter names" setting. */
   showVoterNames: boolean;
+  /** Per-session override of the set's "show results summary" setting. */
+  showResultsSummary: boolean;
 
   readonly players = new Map<string, RuntimePlayer>();
   private timerHandle: unknown = null;
@@ -139,6 +147,13 @@ export class SessionEngine {
     this.scheduler = opts.scheduler ?? realScheduler;
     this.hooks = opts.hooks ?? {};
     this.showVoterNames = opts.set.showVoterNames;
+    this.showResultsSummary = opts.set.showResultsSummary;
+  }
+
+  /** Toggle the end-of-session summary for this session (host skip). */
+  setShowSummary(enabled: boolean): EngineResult {
+    this.showResultsSummary = enabled;
+    return { ok: true };
   }
 
   /**
@@ -236,6 +251,99 @@ export class SessionEngine {
   }
   writeInHiddenGroupsOf(questionId: string): Set<string> {
     return this.writeInHiddenGroups.get(questionId) ?? new Set<string>();
+  }
+
+  // ---------------------------------------------------------------- results summary
+
+  private pollQuestions(): LoadedQuestion[] {
+    return this.set.questions.filter((q) => q.mode === 'POLL');
+  }
+
+  /** Human-readable rendering of an answer value (for the player summary). */
+  private renderAnswerText(q: LoadedQuestion, value: AnswerValue): string {
+    const textOf = (id: string) => q.options.find((o) => o.id === id)?.text ?? id;
+    switch (value.kind) {
+      case 'option':
+        return textOf(value.optionId);
+      case 'options':
+        return value.optionIds.map(textOf).join(', ');
+      case 'order':
+        return value.order.map(textOf).join(' > ');
+      case 'text':
+        return value.text;
+      case 'number':
+        return String(value.value);
+    }
+  }
+
+  /** Winner cards for a poll question's results. */
+  private summaryWinners(q: LoadedQuestion, results: QuestionResults, withVoters: boolean): SummaryWinner[] {
+    const w = results.winners;
+    if (!w) return [];
+    const percent = results.totalAnswers === 0 ? 0 : Math.round((w.count / results.totalAnswers) * 100);
+    return w.keys.map((key) => {
+      let label = key;
+      let voters;
+      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE') {
+        label = q.options.find((o) => o.id === key)?.text ?? key;
+        voters = withVoters ? results.voters?.find((v) => v.optionId === key)?.voters : undefined;
+      } else if (q.type === 'RATING') {
+        voters = withVoters ? results.voterGroups?.find((g) => g.label === key)?.voters : undefined;
+      } else if (q.type === 'WRITE_IN') {
+        const g = results.writeIn?.groups.find((gg) => gg.key === key);
+        label = g?.label ?? key;
+        voters = withVoters ? g?.voters : undefined;
+      }
+      return { label, count: w.count, percent, ...(voters ? { voters } : {}) };
+    });
+  }
+
+  /** Did this player's answer match a top answer (post-moderation)? */
+  private matchesTop(q: LoadedQuestion, value: AnswerValue, keys: Set<string>): boolean {
+    if (value.kind === 'option') return keys.has(value.optionId);
+    if (value.kind === 'options') return value.optionIds.some((id) => keys.has(id));
+    if (value.kind === 'number') return keys.has(String(value.value));
+    if (value.kind === 'text') {
+      if (q.type === 'WRITE_IN') {
+        return keys.has(resolveMergeKey(normalizeWriteIn(value.text), this.writeInMerges.get(q.id) ?? {}));
+      }
+      return [...keys].some((k) => normalizeText(k) === normalizeText(value.text));
+    }
+    return false;
+  }
+
+  buildHostSummary(): QuestionSummary[] {
+    return this.pollQuestions().map((q) => {
+      const results = buildResults(q, this.entriesFor(q), this.showVoterNames, this.writeInStateFor(q));
+      return {
+        questionId: q.id,
+        index: q.order,
+        text: q.text,
+        type: q.type,
+        winners: this.summaryWinners(q, results, this.showVoterNames),
+        tie: results.winners?.tie ?? false,
+        totalAnswers: results.totalAnswers,
+      };
+    });
+  }
+
+  buildPlayerSummary(playerId: string): PlayerQuestionSummary[] {
+    const player = this.players.get(playerId);
+    return this.pollQuestions().map((q) => {
+      const results = buildResults(q, this.entriesFor(q), false, this.writeInStateFor(q));
+      const winnerKeys = new Set(results.winners?.keys ?? []);
+      const answer = player?.answers.get(q.id);
+      const visible = answer && !answer.hidden ? answer : undefined;
+      return {
+        questionId: q.id,
+        index: q.order,
+        text: q.text,
+        winners: this.summaryWinners(q, results, false).map(({ label, count, percent }) => ({ label, count, percent })),
+        tie: results.winners?.tie ?? false,
+        yourAnswer: visible ? this.renderAnswerText(q, visible.value) : null,
+        youMatchedTop: !!visible && this.matchesTop(q, visible.value, winnerKeys),
+      };
+    });
   }
 
   private safeHook(fn: (() => void) | undefined): void {
@@ -420,6 +528,9 @@ export class SessionEngine {
     if (this.state === 'LEADERBOARD') {
       return this.advanceOrEnd();
     }
+    if (this.state === 'SUMMARY') {
+      return this.end();
+    }
     return invalid('Nothing to advance');
   }
 
@@ -437,11 +548,30 @@ export class SessionEngine {
 
   private advanceOrEnd(): EngineResult {
     if (this.currentQuestionIndex >= this.totalQuestions - 1) {
-      return this.end();
+      return this.endOrSummary();
     }
     this.currentQuestionIndex += 1;
     this.beginQuestion();
     return { ok: true };
+  }
+
+  /** After the last question: show the poll results summary first (if enabled
+   *  and there are poll questions), otherwise go straight to the end. */
+  private endOrSummary(): EngineResult {
+    const hasPoll = this.set.questions.some((q) => q.mode === 'POLL');
+    if (this.showResultsSummary && hasPoll) {
+      this.clearTimer();
+      this.state = 'SUMMARY';
+      this.questionStartedAt = null;
+      this.questionEndsAt = null;
+      this.emitState();
+      this.emitter.toHost('session:summary', { questions: this.buildHostSummary() });
+      for (const p of this.activePlayers()) {
+        this.emitter.toPlayer(p.id, 'player:summary', { questions: this.buildPlayerSummary(p.id) });
+      }
+      return { ok: true };
+    }
+    return this.end();
   }
 
   private beginQuestion(): void {
@@ -730,6 +860,8 @@ export class SessionEngine {
           ? this.leaderboard()
           : [],
       showVoterNames: this.showVoterNames,
+      showResultsSummary: this.showResultsSummary,
+      summary: this.state === 'SUMMARY' ? this.buildHostSummary() : null,
     };
   }
 
@@ -772,6 +904,7 @@ export class SessionEngine {
       totalPlayers: this.activePlayers().length,
       lastResult,
       showVoterNames: this.showVoterNames,
+      summary: this.state === 'SUMMARY' ? this.buildPlayerSummary(playerId) : null,
       avatarEmoji: p?.avatarEmoji ?? AVATAR_EMOJIS[0]!,
       color: p?.color ?? PLAYER_COLORS[0]!,
     };

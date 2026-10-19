@@ -3,6 +3,7 @@ import type {
   AnswerResponse,
   AnswerValue,
   JoinResponse,
+  PlayerQuestionSummary,
   PlayerResult,
   PlayerSnapshot,
   PublicQuestion,
@@ -16,6 +17,7 @@ export type PlayPhase =
   | 'answered'
   | 'reveal'
   | 'standings'
+  | 'summary'
   | 'ended'
   | 'kicked';
 
@@ -38,6 +40,7 @@ export interface PlayState {
   rank: number;
   totalPlayers: number;
   finalRank: number | null;
+  summary: PlayerQuestionSummary[] | null;
   /** When true, show the "your name will be shown with your answer" notice. */
   showVoterNames: boolean;
 }
@@ -93,6 +96,7 @@ const initial: PlayState = {
   rank: 0,
   totalPlayers: 0,
   finalRank: null,
+  summary: null,
   showVoterNames: false,
 };
 
@@ -118,9 +122,11 @@ export function usePlaySession(initialPin: string) {
               ? 'reveal'
               : snap.state === 'LEADERBOARD'
                 ? 'standings'
-                : snap.state === 'ENDED'
-                  ? 'ended'
-                  : 'lobby';
+                : snap.state === 'SUMMARY'
+                  ? 'summary'
+                  : snap.state === 'ENDED'
+                    ? 'ended'
+                    : 'lobby';
       patch({
         phase,
         question: snap.question,
@@ -134,6 +140,7 @@ export function usePlaySession(initialPin: string) {
         score: snap.score,
         rank: snap.rank,
         totalPlayers: snap.totalPlayers,
+        summary: snap.summary,
         showVoterNames: snap.showVoterNames,
         avatarEmoji: snap.avatarEmoji,
         color: snap.color,
@@ -210,8 +217,10 @@ export function usePlaySession(initialPin: string) {
       }),
     );
     socket.on('voterNames:update', (p) => patch({ showVoterNames: p.enabled }));
+    socket.on('player:summary', (p) => patch({ summary: p.questions, phase: 'summary' }));
     socket.on('session:state', (p) => {
       if (p.state === 'LEADERBOARD') patch({ phase: 'standings' });
+      if (p.state === 'SUMMARY') patch({ phase: 'summary' });
       if (p.state === 'LOBBY') patch({ phase: 'lobby' });
     });
     socket.on('player:result', (p) =>

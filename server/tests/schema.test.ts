@@ -15,6 +15,7 @@ const validQuiz: QuestionSetInput = {
   title: 'Sample',
   description: 'desc',
   showVoterNames: false,
+  showResultsSummary: true,
   questions: [
     {
       text: 'Capital of France?',

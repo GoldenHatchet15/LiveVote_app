@@ -18,6 +18,7 @@ model QuestionSet {
   title          String
   description    String?
   showVoterNames Boolean    @default(false)
+  showResultsSummary Boolean @default(true)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   questions      Question[]

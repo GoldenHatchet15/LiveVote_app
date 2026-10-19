@@ -121,5 +121,22 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
     }
   }
 
+  // --- Results summary section (poll winners) ---
+  const summary = engine.buildHostSummary();
+  if (summary.length > 0) {
+    lines.push('');
+    lines.push('RESULTS SUMMARY');
+    lines.push(['question_number', 'question_text', 'winning_answer', 'votes', 'percent', 'tie'].join(','));
+    for (const s of summary) {
+      if (s.winners.length === 0) {
+        lines.push([esc(s.index + 1), esc(s.text), esc('(no votes)'), esc(0), esc('0%'), esc('')].join(','));
+        continue;
+      }
+      for (const w of s.winners) {
+        lines.push([esc(s.index + 1), esc(s.text), esc(w.label), esc(w.count), esc(`${w.percent}%`), esc(s.tie ? 'tie' : '')].join(','));
+      }
+    }
+  }
+
   return lines.join('\n') + '\n';
 }

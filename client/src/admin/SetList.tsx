@@ -43,12 +43,12 @@ export function SetList({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl font-extrabold text-brand">LiveVote</h1>
           <p className="text-ink/60">Question sets</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             className="btn-ghost"
             onClick={async () => {
@@ -87,17 +87,17 @@ export function SetList({ onLogout }: { onLogout: () => void }) {
           No sets yet. Create one or import a JSON export.
         </div>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid grid-cols-1 gap-3">
           {sets.map((s) => (
-            <li key={s.id} className="card flex items-center justify-between gap-4">
-              <div className="min-w-0">
+            <li key={s.id} className="card flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 w-full md:w-auto md:flex-1">
                 <h2 className="truncate text-lg font-bold">{s.title}</h2>
                 <p className="truncate text-sm text-ink/50">
                   {s.questionCount} question{s.questionCount === 1 ? '' : 's'}
                   {s.description ? ` · ${s.description}` : ''}
                 </p>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex w-full flex-wrap gap-2 md:w-auto md:shrink-0">
                 <a className="btn-ghost" href={api.exportUrl(s.id)}>
                   Export
                 </a>

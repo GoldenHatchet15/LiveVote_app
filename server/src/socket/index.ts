@@ -107,6 +107,17 @@ export function registerSocketHandlers(io: TypedServer): void {
       ack(engine.setShowVoterNames(Boolean(enabled)));
     });
 
+    socket.on('host:setShowSummary', ({ sessionId, enabled }, ack) => {
+      if (!socket.data.isAdmin) {
+        return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });
+      }
+      const engine = sessionManager.get(sessionId);
+      if (!engine) {
+        return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session not found' });
+      }
+      ack(engine.setShowSummary(Boolean(enabled)));
+    });
+
     socket.on('host:hideResponse', ({ sessionId, playerId, hidden }, ack) => {
       if (!socket.data.isAdmin) {
         return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });

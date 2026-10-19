@@ -9,11 +9,13 @@
 
 import type {
   LeaderboardEntry,
+  PlayerQuestionSummary,
   PlayerResult,
   PlayerSummary,
   PublicQuestion,
   Question,
   QuestionResults,
+  QuestionSummary,
   SessionState,
 } from './domain.js';
 import type { AnswerValue } from './questionTypes.js';
@@ -59,6 +61,8 @@ export interface PlayerSnapshot {
   /** This player's assigned avatar + colour (echoed for their own header). */
   avatarEmoji: string;
   color: string;
+  /** Player results summary; present when state is SUMMARY. */
+  summary: PlayerQuestionSummary[] | null;
 }
 
 export type JoinResponse =
@@ -107,6 +111,10 @@ export interface HostSnapshot {
   leaderboard: LeaderboardEntry[];
   /** Effective per-session value of the "show voter names" setting. */
   showVoterNames: boolean;
+  /** Effective per-session value of the "show results summary" setting. */
+  showResultsSummary: boolean;
+  /** Poll results summary; present when state is SUMMARY. */
+  summary: QuestionSummary[] | null;
 }
 
 export type HostJoinResponse =
@@ -143,6 +151,10 @@ export interface ServerToClientEvents {
 
   // Leaderboard / podium
   leaderboard: (p: { top: LeaderboardEntry[]; full: LeaderboardEntry[] }) => void;
+  // End-of-session results summary (poll questions). Host gets full cards (with
+  // voter names when on); each player gets top answers + their own answer.
+  'session:summary': (p: { questions: QuestionSummary[] }) => void;
+  'player:summary': (p: { questions: PlayerQuestionSummary[] }) => void;
   'session:ended': (p: {
     podium: LeaderboardEntry[];
     full: LeaderboardEntry[];
@@ -181,6 +193,11 @@ export interface ClientToServerEvents {
   ) => void;
   /** Toggle the "show voter names" setting for this session only. */
   'host:setVoterNames': (
+    p: { sessionId: string; enabled: boolean },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** Toggle the end-of-session results summary for this session (host skip). */
+  'host:setShowSummary': (
     p: { sessionId: string; enabled: boolean },
     ack: (res: Ack) => void,
   ) => void;

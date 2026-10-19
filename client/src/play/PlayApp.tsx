@@ -54,6 +54,7 @@ export function PlayApp() {
           subtitle={`${state.score} points · look at the screen`}
         />
       )}
+      {state.phase === 'summary' && <PlayerSummaryScreen state={state} />}
       {state.phase === 'ended' && <EndedScreen state={state} onLeave={leave} />}
       {state.phase === 'kicked' && (
         <Centered title="Removed from game" subtitle={state.error ?? ''} tone="bad">
@@ -265,6 +266,39 @@ function EndedScreen({ state, onLeave }: { state: PlayState; onLeave: () => void
       <button className="btn-ghost mt-6" onClick={onLeave}>
         Done
       </button>
+    </div>
+  );
+}
+
+function PlayerSummaryScreen({ state }: { state: PlayState }) {
+  const s = state.summary ?? [];
+  return (
+    <div className="flex flex-1 flex-col gap-3 overflow-auto bg-brand p-4 text-white">
+      <h1 className="text-center font-display text-3xl font-extrabold">Results</h1>
+      {s.length === 0 && <p className="text-center text-white/70">Look at the screen.</p>}
+      {s.map((c) => (
+        <div key={c.questionId} data-testid="player-summary-card" className="rounded-2xl bg-white/15 p-3">
+          <p className="font-semibold">{c.text}</p>
+          <div className="mt-1 text-sm text-white/80">
+            Top:{' '}
+            {c.winners.length
+              ? c.winners.map((w) => `${w.label} (${w.count})`).join(c.tie ? ' · tie · ' : ', ')
+              : 'No votes'}
+          </div>
+          {c.yourAnswer && (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-white/80">
+                You: <span className="font-bold">{c.yourAnswer}</span>
+              </span>
+              {c.youMatchedTop && (
+                <span data-testid="matched-top" className="rounded-full bg-shape-yellow px-2 py-0.5 text-xs font-bold text-ink">
+                  🎉 Voted with the majority!
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
