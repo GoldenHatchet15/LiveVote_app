@@ -37,6 +37,11 @@ export default defineConfig({
       PORT: String(PORT),
       DATABASE_URL: 'file:./e2e.db',
       ADMIN_PASSWORD: 'changeme',
+      // Explicitly clear these so a developer's local .env (e.g. a production
+      // ADMIN_PASSWORD_HASH) can't leak into the e2e server (dotenv won't
+      // override an already-set env var).
+      ADMIN_PASSWORD_HASH: '',
+      TRUST_PROXY: 'false',
       SESSION_SECRET: 'e2e-secret-0123456789abcdef0123456789abcdef',
       PUBLIC_BASE_URL: BASE,
       CORS_ORIGINS: BASE,

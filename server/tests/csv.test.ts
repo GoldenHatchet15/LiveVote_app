@@ -43,13 +43,15 @@ describe('results CSV export (M4)', () => {
       'mode',
       'type',
       'response',
+      'group_label',
+      'hidden',
       'correct',
       'response_ms',
       'points_awarded',
     ]);
     expect(rows).toHaveLength(1 + 4);
 
-    const idx = { player: 0, score: 3, qnum: 4, qtext: 5, mode: 6, sel: 8, correct: 9, points: 11 };
+    const idx = { player: 0, score: 3, qnum: 4, qtext: 5, mode: 6, sel: 8, correct: 11, points: 13 };
     const body = rows.slice(1);
     const annQ1 = body.find((r) => r[idx.player] === 'Ann' && r[idx.qnum] === '1')!;
     const bobQ1 = body.find((r) => r[idx.player] === 'Bob' && r[idx.qnum] === '1')!;

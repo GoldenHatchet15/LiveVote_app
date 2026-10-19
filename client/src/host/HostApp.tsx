@@ -13,7 +13,8 @@ import { Ended } from './screens/Ended';
 
 export function HostApp() {
   const { sessionId } = useParams();
-  const { state, action, kick, setVoterNames, hideResponse } = useHostSession(sessionId ?? '');
+  const { state, action, kick, setVoterNames, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup } =
+    useHostSession(sessionId ?? '');
   const [baseUrl, setBaseUrl] = useState<string>(() =>
     typeof window !== 'undefined' ? window.location.origin : '',
   );
@@ -121,6 +122,9 @@ export function HostApp() {
           results={state.results}
           hideResults={hideResults}
           onHide={hideResponse}
+          onMerge={mergeWriteIn}
+          onUndoMerge={undoMergeWriteIn}
+          onHideGroup={hideWriteInGroup}
         />
       )}
       {state.state === 'LEADERBOARD' && <Leaderboard entries={state.leaderboard} />}

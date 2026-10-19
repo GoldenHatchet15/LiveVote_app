@@ -15,7 +15,8 @@ export type QuestionType =
   | 'OPEN_ENDED'
   | 'SLIDER'
   | 'ORDERING'
-  | 'RATING';
+  | 'RATING'
+  | 'WRITE_IN';
 
 export const QUESTION_TYPES: QuestionType[] = [
   'MULTIPLE_CHOICE',
@@ -26,6 +27,7 @@ export const QUESTION_TYPES: QuestionType[] = [
   'SLIDER',
   'ORDERING',
   'RATING',
+  'WRITE_IN',
 ];
 
 /** Which game modes each type supports. */
@@ -38,6 +40,7 @@ export const TYPE_MODES: Record<QuestionType, QuestionMode[]> = {
   SLIDER: ['POLL', 'QUIZ'],
   ORDERING: ['QUIZ'],
   RATING: ['POLL'],
+  WRITE_IN: ['POLL'],
 };
 
 /** Types whose answers reference rows in the Option table. */
@@ -50,6 +53,7 @@ export const TYPE_USES_OPTIONS: Record<QuestionType, boolean> = {
   OPEN_ENDED: false,
   SLIDER: false,
   RATING: false,
+  WRITE_IN: false,
 };
 
 export const TYPE_META: Record<QuestionType, { label: string; icon: string; blurb: string }> = {
@@ -61,6 +65,7 @@ export const TYPE_META: Record<QuestionType, { label: string; icon: string; blur
   SLIDER: { label: 'Slider', icon: '🎚️', blurb: 'Guess a number on a scale.' },
   ORDERING: { label: 'Ordering', icon: '🔀', blurb: 'Drag 3–5 items into order. Quiz only.' },
   RATING: { label: 'Rating', icon: '⭐', blurb: '1–5 stars or 1–10 scale. Poll only.' },
+  WRITE_IN: { label: 'Write-in Vote', icon: '🗳️', blurb: 'Players type an answer; matching answers are grouped and show who voted.' },
 };
 
 // ---------------------------------------------------------------- config
@@ -93,6 +98,11 @@ export interface QuestionConfig {
   scale?: 5 | 10;
   lowLabel?: string | null;
   highLabel?: string | null;
+  // WRITE_IN
+  suggestedAnswers?: string[];
+  onlySuggested?: boolean;
+  maxAnswerLength?: number;
+  reviewBeforeReveal?: boolean;
 }
 
 /** The player-safe projection of a config: no correct answers. */
@@ -117,6 +127,14 @@ export function toPublicConfig(type: QuestionType, config: QuestionConfig): Ques
       };
     case 'TRUE_FALSE':
       return { trueLabel: config.trueLabel, falseLabel: config.falseLabel };
+    case 'WRITE_IN':
+      // Suggested answers are shown to players as autocomplete; the roster is
+      // intentionally public. reviewBeforeReveal is host-only (stripped).
+      return {
+        suggestedAnswers: config.suggestedAnswers ?? [],
+        onlySuggested: config.onlySuggested ?? false,
+        maxAnswerLength: config.maxAnswerLength ?? WRITE_IN_MAX,
+      };
     default:
       return {};
   }
@@ -140,10 +158,12 @@ export const ANSWER_KIND: Record<QuestionType, AnswerValue['kind']> = {
   OPEN_ENDED: 'text',
   SLIDER: 'number',
   RATING: 'number',
+  WRITE_IN: 'text',
 };
 
 export const TYPE_ANSWER_MAX = 40;
 export const OPEN_ENDED_MAX = 120;
+export const WRITE_IN_MAX = 40;
 
 /** Normalize text for matching / word-cloud grouping: lowercase, strip accents,
  *  collapse whitespace. "Canción " -> "cancion". */
@@ -195,6 +215,7 @@ export function gradeAnswer(
   switch (type) {
     case 'OPEN_ENDED':
     case 'RATING':
+    case 'WRITE_IN':
       return { correct: null, creditFactor: 0 };
 
     case 'MULTIPLE_CHOICE':

@@ -112,6 +112,30 @@ describe('host disconnect/refresh', () => {
   });
 });
 
+describe('WRITE_IN moderation is admin-only over sockets', () => {
+  it('a non-admin socket cannot merge, undo-merge, or hide groups', async () => {
+    const engine = await sessionManager.createSession(setId);
+    createdSessionIds.push(engine!.sessionId);
+    const sid = engine!.sessionId;
+
+    const p = player(); // no admin cookie
+    await once(p, 'connect');
+    const emit = (event: string, payload: object) =>
+      new Promise<Ack>((resolve) => p.emit(event as 'host:writeInMerge', payload as never, resolve));
+
+    for (const [event, payload] of [
+      ['host:writeInMerge', { sessionId: sid, sourceKey: 'a', targetKey: 'b' }],
+      ['host:writeInUndoMerge', { sessionId: sid, sourceKey: 'a' }],
+      ['host:writeInHideGroup', { sessionId: sid, key: 'a', hidden: true }],
+    ] as const) {
+      const res = await emit(event, payload);
+      expect(res.ok).toBe(false);
+      expect(res.code).toBe('NOT_AUTHENTICATED');
+    }
+    p.disconnect();
+  });
+});
+
 describe('two simultaneous sessions do not leak state into each other', () => {
   it('a question started in session A is never delivered to a player in session B', async () => {
     const a = await sessionManager.createSession(setId);

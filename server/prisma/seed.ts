@@ -212,6 +212,19 @@ const MIXED_SET: SeedSet = {
       timeLimitSec: 20,
       points: 'NONE',
     },
+    {
+      text: 'Which student is most likely to ride a skateboard to class?',
+      mode: 'POLL',
+      type: 'WRITE_IN',
+      config: {
+        suggestedAnswers: ['Carlos', 'José', 'Marta', 'Ana', 'Luis', 'Pedro', 'Kevin'],
+        onlySuggested: false,
+        maxAnswerLength: 40,
+        reviewBeforeReveal: false,
+      },
+      timeLimitSec: 30,
+      points: 'NONE',
+    },
   ],
 };
 

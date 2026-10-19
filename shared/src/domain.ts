@@ -154,6 +154,16 @@ export interface TextAnswerTally {
   correct: boolean;
 }
 
+/** WRITE_IN grouped-answer row for the host reveal. */
+export interface WriteInGroupResult {
+  key: string;
+  label: string;
+  count: number;
+  percent: number;
+  /** Present (host-only) only when show-voter-names is on. */
+  voters?: Voter[];
+}
+
 /** OPEN_ENDED answer-wall card. */
 export interface OpenEndedCard {
   id: string;
@@ -200,6 +210,17 @@ export interface QuestionResults {
   rating?: { scale: number; counts: { value: number; count: number }[]; average: number };
   /** ORDERING: the correct order revealed. */
   ordering?: { correctOrder: { optionId: string; text: string }[] };
+  /**
+   * WRITE_IN: grouped answers sorted by votes. `voters` on each group is present
+   * only when show-voter-names is on (host-only). `duplicates` (host-only) are
+   * near-match merge suggestions.
+   */
+  writeIn?: {
+    groups: WriteInGroupResult[];
+    duplicates?: { a: string; b: string; labelA: string; labelB: string }[];
+    /** Host should review before showing results on screen. */
+    reviewBeforeReveal?: boolean;
+  };
 
   // ---- show-voter-names (host-only; present only when enabled) ----
   /** Per-option voter nicknames (option types). */

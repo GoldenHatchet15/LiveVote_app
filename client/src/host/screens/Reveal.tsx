@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { PublicQuestion, QuestionResults, Voter, VoterGroup } from '@livevote/shared';
+import type { PublicQuestion, QuestionResults, Voter, VoterGroup, WriteInGroupResult } from '@livevote/shared';
 import { Shape, shapeColor } from '../../components/Shape';
 import { NameTag } from '../../components/NameTag';
 import { sound } from '../../lib/sound';
@@ -70,11 +70,17 @@ export function Reveal({
   results,
   hideResults,
   onHide,
+  onMerge,
+  onUndoMerge,
+  onHideGroup,
 }: {
   question: PublicQuestion;
   results: QuestionResults;
   hideResults: boolean;
   onHide: (playerId: string, hidden: boolean) => void;
+  onMerge: (sourceKey: string, targetKey: string) => void;
+  onUndoMerge: (sourceKey: string) => void;
+  onHideGroup: (key: string, hidden: boolean) => void;
 }) {
   useEffect(() => {
     sound.reveal();
@@ -98,6 +104,9 @@ export function Reveal({
         )}
         {results.questionType === 'SLIDER' && <SliderView results={results} />}
         {results.questionType === 'RATING' && <RatingView results={results} showNames={showNames} />}
+        {results.questionType === 'WRITE_IN' && (
+          <WriteInView results={results} onMerge={onMerge} onUndoMerge={onUndoMerge} onHideGroup={onHideGroup} />
+        )}
       </div>
       <Footer results={results} hideResults={hideResults} />
     </div>
@@ -343,6 +352,133 @@ function RatingView({ results, showNames }: { results: QuestionResults; showName
         Average <span className="font-black text-white">{r.average}</span> / {r.scale}
       </p>
       {showNames && results.voterGroups && <VoterGroupList groups={results.voterGroups} />}
+    </div>
+  );
+}
+
+function WriteInView({
+  results,
+  onMerge,
+  onUndoMerge,
+  onHideGroup,
+}: {
+  results: QuestionResults;
+  onMerge: (sourceKey: string, targetKey: string) => void;
+  onUndoMerge: (sourceKey: string) => void;
+  onHideGroup: (key: string, hidden: boolean) => void;
+}) {
+  const [merged, setMerged] = useState<{ key: string; label: string }[]>([]);
+  const [showOther, setShowOther] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
+  const wi = results.writeIn;
+  if (!wi) return null;
+  const gated = wi.reviewBeforeReveal === true && !reviewed;
+  const groups = wi.groups;
+  const max = Math.max(1, ...groups.map((g) => g.count));
+  const top = groups.slice(0, 8);
+  const other = groups.slice(8);
+  const dups = wi.duplicates ?? [];
+
+  const doMerge = (src: string, srcLabel: string, tgt: string) => {
+    onMerge(src, tgt);
+    setMerged((m) => (m.some((x) => x.key === src) ? m : [...m, { key: src, label: srcLabel }]));
+  };
+  const doUndo = (src: string) => {
+    onUndoMerge(src);
+    setMerged((m) => m.filter((x) => x.key !== src));
+  };
+
+  const Bar = (g: WriteInGroupResult) => (
+    <div key={g.key} data-testid="write-in-group" data-count={g.count} data-key={g.key}>
+      <div className="flex items-center gap-3">
+        <span className="w-48 shrink-0 truncate text-right text-xl font-semibold text-white">{g.label}</span>
+        <div className="h-10 flex-1 overflow-hidden rounded-lg bg-white/10">
+          <motion.div
+            className="h-full rounded-lg bg-shape-blue"
+            initial={{ width: 0 }}
+            animate={{ width: `${(g.count / max) * 100}%` }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        </div>
+        <span className="w-24 text-right font-black text-white">
+          {g.count} · {g.percent}%
+        </span>
+        <button
+          data-testid="wi-hide"
+          title="Hide this answer"
+          className="rounded bg-black/30 px-2 py-1 text-xs text-white/70 hover:text-white"
+          onClick={() => onHideGroup(g.key, true)}
+        >
+          Hide
+        </button>
+      </div>
+      {g.voters && (
+        <div className="pl-[12.5rem] pr-28">
+          <VoterNames voters={g.voters} />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="grid gap-3">
+      {gated && (
+        <div data-testid="wi-review-gate" className="flex items-center justify-between gap-3 rounded-xl bg-amber-400/20 p-3 text-white">
+          <span className="font-semibold">Review the answers below (merge/hide as needed), then reveal to the room.</span>
+          <button className="btn-primary px-4" onClick={() => setReviewed(true)}>
+            Reveal to the room
+          </button>
+        </div>
+      )}
+      {dups.length > 0 && (
+        <div data-testid="wi-duplicates" className="rounded-xl bg-amber-400/15 p-3">
+          <span className="text-sm font-bold uppercase tracking-wide text-amber-300">Possible duplicates</span>
+          {dups.map((d, i) => (
+            <div key={i} className="mt-1 flex items-center gap-2 text-white">
+              <span className="font-semibold">{d.labelA}</span>
+              <span className="text-white/40">↔</span>
+              <span className="font-semibold">{d.labelB}</span>
+              <button
+                data-testid="wi-merge"
+                className="rounded bg-white/15 px-2 py-0.5 text-sm font-semibold hover:bg-white/25"
+                onClick={() => doMerge(d.b, d.labelB, d.a)}
+              >
+                Merge
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {merged.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {merged.map((m) => (
+            <button
+              key={m.key}
+              data-testid="wi-undo"
+              className="rounded bg-white/10 px-2 py-0.5 text-sm text-white/70 hover:text-white"
+              onClick={() => doUndo(m.key)}
+            >
+              Undo merge “{m.label}”
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid gap-3 transition-opacity" style={{ opacity: gated ? 0.3 : 1 }}>
+        {top.map(Bar)}
+      </div>
+      {other.length > 0 && (
+        <div style={{ opacity: gated ? 0.3 : 1 }}>
+          <button
+            data-testid="wi-other-toggle"
+            className="text-sm text-white/60 underline hover:text-white"
+            onClick={() => setShowOther((v) => !v)}
+          >
+            {showOther ? 'Hide other answers' : `Show ${other.length} other answer${other.length === 1 ? '' : 's'}`}
+          </button>
+          {showOther && <div className="mt-2 grid gap-3">{other.map(Bar)}</div>}
+        </div>
+      )}
+      {groups.length === 0 && <p className="text-center text-white/40">No answers yet.</p>}
     </div>
   );
 }

@@ -34,6 +34,7 @@ const OPTION_BOUNDS: Record<QuestionType, { min: number; max: number }> = {
   OPEN_ENDED: { min: 0, max: 0 },
   SLIDER: { min: 0, max: 0 },
   RATING: { min: 0, max: 0 },
+  WRITE_IN: { min: 0, max: 0 },
 };
 
 export const configSchema = z
@@ -52,6 +53,10 @@ export const configSchema = z
     scale: z.union([z.literal(5), z.literal(10)]).optional(),
     lowLabel: z.string().trim().max(40).nullable().optional(),
     highLabel: z.string().trim().max(40).nullable().optional(),
+    suggestedAnswers: z.array(z.string().trim().min(1).max(60)).max(500).optional(),
+    onlySuggested: z.boolean().optional(),
+    maxAnswerLength: z.number().int().min(1).max(120).optional(),
+    reviewBeforeReveal: z.boolean().optional(),
   })
   .default({});
 export const timeLimitSchema = z.union([
@@ -176,6 +181,15 @@ export const questionInputSchema = z
           code: z.ZodIssueCode.custom,
           message: 'Choose a reveal style (word cloud or answer wall)',
           path: ['config', 'revealStyle'],
+        });
+      }
+    }
+    if (type === 'WRITE_IN') {
+      if (c.onlySuggested && (c.suggestedAnswers ?? []).filter((a) => a.trim()).length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '"Allow only suggested answers" needs at least one suggested answer',
+          path: ['config', 'suggestedAnswers'],
         });
       }
     }

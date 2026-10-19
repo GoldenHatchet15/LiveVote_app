@@ -164,6 +164,21 @@ export function useHostSession(sessionId: string) {
       socketRef.current?.emit('host:hideResponse', { sessionId, playerId, hidden }, () => {}),
     [sessionId],
   );
+  const mergeWriteIn = useCallback(
+    (sourceKey: string, targetKey: string) =>
+      socketRef.current?.emit('host:writeInMerge', { sessionId, sourceKey, targetKey }, () => {}),
+    [sessionId],
+  );
+  const undoMergeWriteIn = useCallback(
+    (sourceKey: string) =>
+      socketRef.current?.emit('host:writeInUndoMerge', { sessionId, sourceKey }, () => {}),
+    [sessionId],
+  );
+  const hideWriteInGroup = useCallback(
+    (key: string, hidden: boolean) =>
+      socketRef.current?.emit('host:writeInHideGroup', { sessionId, key, hidden }, () => {}),
+    [sessionId],
+  );
 
-  return { state: s, action, kick, setVoterNames, hideResponse };
+  return { state: s, action, kick, setVoterNames, hideResponse, mergeWriteIn, undoMergeWriteIn, hideWriteInGroup };
 }

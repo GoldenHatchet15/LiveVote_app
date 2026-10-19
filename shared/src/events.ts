@@ -184,9 +184,24 @@ export interface ClientToServerEvents {
     p: { sessionId: string; enabled: boolean },
     ack: (res: Ack) => void,
   ) => void;
-  /** Hide/unhide a single OPEN_ENDED response from the screen + word cloud. */
+  /** Hide/unhide a single OPEN_ENDED/WRITE_IN response from the screen. */
   'host:hideResponse': (
     p: { sessionId: string; playerId: string; hidden: boolean },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** WRITE_IN: merge one answer group into another. */
+  'host:writeInMerge': (
+    p: { sessionId: string; sourceKey: string; targetKey: string },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** WRITE_IN: undo a previous merge. */
+  'host:writeInUndoMerge': (
+    p: { sessionId: string; sourceKey: string },
+    ack: (res: Ack) => void,
+  ) => void;
+  /** WRITE_IN: hide/unhide an entire answer group. */
+  'host:writeInHideGroup': (
+    p: { sessionId: string; key: string; hidden: boolean },
     ack: (res: Ack) => void,
   ) => void;
 }

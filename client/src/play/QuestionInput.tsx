@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
+  normalizeWriteIn,
   OPEN_ENDED_MAX,
   TYPE_ANSWER_MAX,
+  WRITE_IN_MAX,
   type AnswerValue,
   type Option,
   type PublicQuestion,
@@ -29,6 +31,7 @@ export function QuestionInput({
         {(question.type === 'TYPE_ANSWER' || question.type === 'OPEN_ENDED') && (
           <TextEntry q={question} onAnswer={onAnswer} />
         )}
+        {question.type === 'WRITE_IN' && <WriteIn q={question} onAnswer={onAnswer} />}
       </div>
     </div>
   );
@@ -262,6 +265,61 @@ function TextEntry({ q, onAnswer }: { q: PublicQuestion; onAnswer: (v: AnswerVal
         {text.length}/{max}
       </div>
       <SubmitButton disabled={trimmed.length === 0} onClick={() => onAnswer({ kind: 'text', text: trimmed })} />
+    </div>
+  );
+}
+
+function WriteIn({ q, onAnswer }: { q: PublicQuestion; onAnswer: (v: AnswerValue) => void }) {
+  const max = q.config.maxAnswerLength ?? WRITE_IN_MAX;
+  const suggestions = q.config.suggestedAnswers ?? [];
+  const onlySuggested = q.config.onlySuggested === true;
+  const [text, setText] = useState('');
+  const trimmed = text.trim();
+  const filtered = useMemo(() => {
+    const n = normalizeWriteIn(text);
+    const list = n ? suggestions.filter((s) => normalizeWriteIn(s).includes(n)) : suggestions;
+    return list.slice(0, 8);
+  }, [text, suggestions]);
+  const matches = suggestions.some((s) => normalizeWriteIn(s) === normalizeWriteIn(text));
+  const canSubmit = trimmed.length > 0 && (!onlySuggested || matches);
+  return (
+    <div className="flex flex-1 flex-col justify-center gap-3">
+      <input
+        data-testid="text-input"
+        className="input w-full text-lg"
+        placeholder={onlySuggested ? 'Search the list…' : 'Type an answer'}
+        maxLength={max}
+        value={text}
+        autoComplete="off"
+        list={suggestions.length ? `wi-${q.id}` : undefined}
+        onChange={(e) => setText(e.target.value)}
+      />
+      {suggestions.length > 0 && (
+        <datalist id={`wi-${q.id}`}>
+          {suggestions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      )}
+      {suggestions.length > 0 && filtered.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {filtered.map((s) => (
+            <button
+              key={s}
+              type="button"
+              data-testid="wi-suggestion"
+              className="rounded-full bg-black/5 px-3 py-1 text-sm text-ink"
+              onClick={() => setText(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="text-right text-xs text-ink/40">
+        {text.length}/{max}
+      </div>
+      <SubmitButton disabled={!canSubmit} onClick={() => onAnswer({ kind: 'text', text: trimmed })} />
     </div>
   );
 }

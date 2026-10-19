@@ -1,4 +1,9 @@
-import type { AnswerValue } from '@livevote/shared';
+import {
+  groupWriteIn,
+  normalizeWriteIn,
+  resolveMergeKey,
+  type AnswerValue,
+} from '@livevote/shared';
 import type { SessionEngine } from './engine.js';
 import type { LoadedQuestion, LoadedSet } from './types.js';
 
@@ -45,11 +50,30 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
     'mode',
     'type',
     'response',
+    'group_label',
+    'hidden',
     'correct',
     'response_ms',
     'points_awarded',
   ];
   const lines: string[] = [header.join(',')];
+
+  // Precompute WRITE_IN group labels per question (so the CSV shows the grouped
+  // vote each raw answer counted toward, respecting host merges).
+  const writeInLabels = new Map<string, Map<string, string>>(); // questionId -> (normKey -> label)
+  for (const q of set.questions) {
+    if (q.type !== 'WRITE_IN') continue;
+    const merges = engine.writeInMergesOf(q.id);
+    const subs = [...engine.players.values()]
+      .filter((p) => !p.kicked)
+      .map((p) => p.answers.get(q.id))
+      .filter((a): a is NonNullable<typeof a> => !!a && a.value.kind === 'text')
+      .sort((a, b) => a.responseMs - b.responseMs)
+      .map((a) => ({ text: (a.value as { kind: 'text'; text: string }).text, voter: 0 }));
+    const labelByKey = new Map<string, string>();
+    for (const g of groupWriteIn(subs, q.config.suggestedAnswers ?? [], merges)) labelByKey.set(g.key, g.label);
+    writeInLabels.set(q.id, labelByKey);
+  }
 
   const players = [...engine.players.values()]
     .filter((p) => !p.kicked)
@@ -59,6 +83,15 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
     for (const q of set.questions) {
       const answer = player.answers.get(q.id) ?? null;
       const response = renderResponse(q, answer?.value ?? null);
+      // WRITE_IN: the grouped label this answer counted toward + hidden flag.
+      let groupLabel = '';
+      let hidden = '';
+      if (q.type === 'WRITE_IN' && answer && answer.value.kind === 'text') {
+        const key = resolveMergeKey(normalizeWriteIn(answer.value.text), engine.writeInMergesOf(q.id));
+        groupLabel = writeInLabels.get(q.id)?.get(key) ?? '';
+        const groupHidden = engine.writeInHiddenGroupsOf(q.id).has(key);
+        hidden = answer.hidden || groupHidden ? 'yes' : '';
+      }
       const correct =
         answer?.correct === null || answer?.correct === undefined
           ? answer
@@ -78,6 +111,8 @@ export function buildResultsCsv(engine: SessionEngine, set: LoadedSet): string {
           esc(q.mode),
           esc(q.type),
           esc(response),
+          esc(groupLabel),
+          esc(hidden),
           esc(correct),
           esc(answer?.responseMs ?? ''),
           esc(answer?.pointsAwarded ?? 0),

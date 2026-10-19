@@ -224,6 +224,7 @@ show in the builder, and the preview renders exactly what players will see.
 | **Slider** | Poll + Quiz | drag a number | full within tolerance, scaled down to 2× tolerance, 0 beyond | distribution on a number line (correct marked / average) |
 | **Ordering** | Quiz only | drag/tap 3–5 items into order | full points for the **exact** order | correct order + % correct |
 | **Rating** | Poll only | 1–5 stars or 1–10 | — | distribution + average |
+| **Write-in Vote** | Poll only | type an answer (autocomplete) | — | matching answers **grouped** into bars with the name tags of everyone who voted |
 
 - **Type-answer matching** ignores case, extra spaces and accents
   (`canción` = `cancion`); a per-question **exact match** toggle turns that off.
@@ -233,6 +234,31 @@ show in the builder, and the preview renders exactly what players will see.
 - **Open-ended** responses are HTML-sanitized and profanity-filtered on submit;
   hidden responses are excluded from the word cloud and the wall.
 - **Changing a question's type** warns before discarding incompatible fields.
+
+#### Write-in Vote
+
+Players type a free answer; matching answers are grouped into one "vote" and the
+reveal shows each as a bar (sorted by count, ties alphabetical) with the name
+tags of everyone who gave that answer underneath. Great for "which classmate
+is most likely to…" style questions.
+
+- **Matching** (server-side): two answers match when equal after normalization —
+  case-insensitive, trimmed + inner spaces collapsed, accents ignored
+  (`José` = `Jose`), and trailing `.`/`!`/`?` dropped. **No automatic fuzzy
+  matching** — typos stay separate.
+- **Display label**: a matching *suggested answer*'s spelling, else the most
+  common original spelling (ties → first submitted), title-cased.
+- **Suggested answers** (optional roster): players get autocomplete; an
+  **"only suggested answers"** toggle turns it into a pick-from-list vote
+  (rejected server-side otherwise).
+- **Host tools on the reveal**: *Possible duplicates* suggestions (edit-distance
+  ≤1 for 4+ char answers, e.g. `Jose`/`Joes`) with one-click **Merge** and
+  **Undo**; **Hide** a whole group or an individual answer (removed from the
+  screen + counts, kept in the CSV marked `hidden`); an optional **review before
+  reveal** gate. Top 8 groups show; the rest collapse into "other answers".
+- **Privacy**: defaults to names **on** (the point of the type) but respects the
+  session toggle — off shows counts only, and the server sends no names. Players
+  never receive other players' answers or names. Write-in never affects scores.
 - **Show voter names** works with every type — names appear under each option,
   grouped under *Correct* / each common wrong answer / each rating value /
   *Correct*-*Incorrect*, by closest guess (slider), or on each answer-wall card

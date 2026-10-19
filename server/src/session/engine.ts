@@ -127,6 +127,9 @@ export class SessionEngine {
   private lastGain = new Map<string, number>();
   /** Monotonic cursor so colours are assigned round-robin as players join. */
   private colorCursor = 0;
+  /** WRITE_IN host moderation, per question id. */
+  private writeInMerges = new Map<string, Record<string, string>>();
+  private writeInHiddenGroups = new Map<string, Set<string>>();
 
   constructor(opts: EngineOptions) {
     this.sessionId = opts.sessionId;
@@ -174,11 +177,65 @@ export class SessionEngine {
     const answer = q && p ? p.answers.get(q.id) : undefined;
     if (!answer) return { ok: false, code: ErrorCodes.INTERNAL, message: 'No response to hide' };
     answer.hidden = hidden;
-    if (this.state === 'REVEAL') {
-      const results = this.currentResults();
-      if (results) this.emitter.toHost('reveal', { results });
-    }
+    this.reEmitRevealToHost();
     return { ok: true };
+  }
+
+  /** Re-send the reveal chart to the host after a moderation change. */
+  private reEmitRevealToHost(): void {
+    if (this.state !== 'REVEAL') return;
+    const results = this.currentResults();
+    if (results) this.emitter.toHost('reveal', { results });
+  }
+
+  // ---- WRITE_IN host moderation (merge / undo / hide group) ----
+
+  mergeWriteIn(sourceKey: string, targetKey: string): EngineResult {
+    const q = this.currentLoaded();
+    if (!q || q.type !== 'WRITE_IN') return { ok: false, code: ErrorCodes.INTERNAL, message: 'Not a write-in question' };
+    if (!sourceKey || !targetKey || sourceKey === targetKey) {
+      return { ok: false, code: ErrorCodes.OPTION_INVALID, message: 'Invalid merge' };
+    }
+    const merges = this.writeInMerges.get(q.id) ?? {};
+    merges[sourceKey] = targetKey;
+    this.writeInMerges.set(q.id, merges);
+    this.reEmitRevealToHost();
+    return { ok: true };
+  }
+
+  undoMergeWriteIn(sourceKey: string): EngineResult {
+    const q = this.currentLoaded();
+    if (!q) return { ok: false, code: ErrorCodes.INTERNAL, message: 'No question' };
+    const merges = this.writeInMerges.get(q.id);
+    if (merges) delete merges[sourceKey];
+    this.reEmitRevealToHost();
+    return { ok: true };
+  }
+
+  hideWriteInGroup(key: string, hidden: boolean): EngineResult {
+    const q = this.currentLoaded();
+    if (!q) return { ok: false, code: ErrorCodes.INTERNAL, message: 'No question' };
+    const set = this.writeInHiddenGroups.get(q.id) ?? new Set<string>();
+    if (hidden) set.add(key);
+    else set.delete(key);
+    this.writeInHiddenGroups.set(q.id, set);
+    this.reEmitRevealToHost();
+    return { ok: true };
+  }
+
+  private writeInStateFor(q: LoadedQuestion): { merges?: Record<string, string>; hiddenGroups?: Set<string> } {
+    return {
+      merges: this.writeInMerges.get(q.id),
+      hiddenGroups: this.writeInHiddenGroups.get(q.id),
+    };
+  }
+
+  /** Host merge map for a WRITE_IN question (for CSV export). */
+  writeInMergesOf(questionId: string): Record<string, string> {
+    return this.writeInMerges.get(questionId) ?? {};
+  }
+  writeInHiddenGroupsOf(questionId: string): Set<string> {
+    return this.writeInHiddenGroups.get(questionId) ?? new Set<string>();
   }
 
   private safeHook(fn: (() => void) | undefined): void {
@@ -535,7 +592,7 @@ export class SessionEngine {
     }
 
     const totalPlayers = this.activePlayers().length;
-    const results = buildResults(q, this.entriesFor(q), this.showVoterNames);
+    const results = buildResults(q, this.entriesFor(q), this.showVoterNames, this.writeInStateFor(q));
 
     // Broadcast: host gets the chart; each player gets only their own result.
     this.emitState();
@@ -649,7 +706,7 @@ export class SessionEngine {
   private currentResults(): QuestionResults | null {
     const q = this.currentLoaded();
     if (!q || this.state !== 'REVEAL') return null;
-    return buildResults(q, this.entriesFor(q), this.showVoterNames);
+    return buildResults(q, this.entriesFor(q), this.showVoterNames, this.writeInStateFor(q));
   }
 
   hostSnapshot(): HostSnapshot {

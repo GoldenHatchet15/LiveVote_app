@@ -22,6 +22,7 @@ const OPTION_BOUNDS: Record<QuestionType, { min: number; max: number }> = {
   OPEN_ENDED: { min: 0, max: 0 },
   SLIDER: { min: 0, max: 0 },
   RATING: { min: 0, max: 0 },
+  WRITE_IN: { min: 0, max: 0 },
 };
 
 /** Fresh options/config/correct when switching to a type. */
@@ -43,6 +44,12 @@ function defaultsForType(type: QuestionType): Pick<EditQuestion, 'options' | 'co
       return { options: [], config: { min: 0, max: 100, step: 1, unit: '', correctValue: 50, tolerance: 5 }, correct: [] };
     case 'RATING':
       return { options: [], config: { scale: 5, lowLabel: '', highLabel: '' }, correct: [] };
+    case 'WRITE_IN':
+      return {
+        options: [],
+        config: { suggestedAnswers: [], onlySuggested: false, maxAnswerLength: 40, reviewBeforeReveal: false },
+        correct: [],
+      };
   }
 }
 
@@ -402,6 +409,54 @@ function TypeConfig({
         <div>
           <label className="label">High label (optional)</label>
           <input className="input" value={q.config.highLabel ?? ''} placeholder="Totally" onChange={(e) => setConfig({ highLabel: e.target.value || null })} />
+        </div>
+      </div>
+    );
+  }
+
+  if (q.type === 'WRITE_IN') {
+    const suggestions = q.config.suggestedAnswers ?? [];
+    const setSuggestions = (next: string[]) => setConfig({ suggestedAnswers: next });
+    return (
+      <div className="mt-4">
+        <label className="label">Suggested answers (optional — e.g. a class roster)</label>
+        <p className="mb-2 text-sm text-ink/50">Players get autocomplete; a matching answer uses the suggested spelling as its label.</p>
+        <div className="grid gap-2">
+          {suggestions.map((a, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                className="input"
+                data-testid={`suggested-${i}`}
+                value={a}
+                placeholder={`Suggested answer ${i + 1}`}
+                onChange={(e) => setSuggestions(suggestions.map((x, j) => (j === i ? e.target.value : x)))}
+              />
+              <button className="btn-ghost px-2 text-brand" onClick={() => setSuggestions(suggestions.filter((_, j) => j !== i))}>✕</button>
+            </div>
+          ))}
+        </div>
+        <button className="btn-ghost mt-2 px-2 py-1 text-sm" onClick={() => setSuggestions([...suggestions, ''])}>+ Add suggested answer</button>
+
+        <div className="mt-3 grid gap-2">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" className="h-4 w-4 accent-brand" checked={q.config.onlySuggested ?? false} onChange={(e) => setConfig({ onlySuggested: e.target.checked })} />
+            <span className="text-sm">Allow only suggested answers (pick from the list)</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" className="h-4 w-4 accent-brand" checked={q.config.reviewBeforeReveal ?? false} onChange={(e) => setConfig({ reviewBeforeReveal: e.target.checked })} />
+            <span className="text-sm">Review answers before showing the reveal</span>
+          </label>
+          <div>
+            <label className="label">Max answer length</label>
+            <input
+              className="input w-28"
+              type="number"
+              min={1}
+              max={120}
+              value={q.config.maxAnswerLength ?? 40}
+              onChange={(e) => setConfig({ maxAnswerLength: e.target.value === '' ? undefined : Number(e.target.value) })}
+            />
+          </div>
         </div>
       </div>
     );

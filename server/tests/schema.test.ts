@@ -158,6 +158,26 @@ describe('per-type validation', () => {
     ).toBe(true);
   });
 
+  it('WRITE_IN is poll-only and "only suggested" needs a roster', () => {
+    expect(questionSetInputSchema.safeParse(base({ type: 'WRITE_IN', mode: 'QUIZ', config: {} })).success).toBe(false);
+    expect(questionSetInputSchema.safeParse(base({ type: 'WRITE_IN', mode: 'POLL', points: 'NONE', config: {} })).success).toBe(true);
+    expect(
+      questionSetInputSchema.safeParse(base({ type: 'WRITE_IN', mode: 'POLL', points: 'NONE', config: { onlySuggested: true, suggestedAnswers: [] } })).success,
+    ).toBe(false);
+    expect(
+      questionSetInputSchema.safeParse(base({ type: 'WRITE_IN', mode: 'POLL', points: 'NONE', config: { onlySuggested: true, suggestedAnswers: ['Carlos'] } })).success,
+    ).toBe(true);
+  });
+
+  it('export/import round-trips a WRITE_IN config (suggested answers + settings)', () => {
+    const parsed = questionSetInputSchema.parse(
+      base({ type: 'WRITE_IN', mode: 'POLL', points: 'NONE', config: { suggestedAnswers: ['Ana', 'Carlos'], onlySuggested: false, maxAnswerLength: 30, reviewBeforeReveal: true } }),
+    );
+    const envelope = { schemaVersion: 1 as const, exportedAt: new Date().toISOString(), set: parsed };
+    const back = questionSetExportSchema.parse(JSON.parse(JSON.stringify(envelope)));
+    expect(back.set.questions[0]!.config).toEqual(parsed.questions[0]!.config);
+  });
+
   it('export/import round-trips a SLIDER config', () => {
     const parsed = questionSetInputSchema.parse(base({ type: 'SLIDER', config: { min: 0, max: 100, step: 5, unit: 'kg', correctValue: 40, tolerance: 3 } }));
     const envelope = { schemaVersion: 1 as const, exportedAt: new Date().toISOString(), set: parsed };

@@ -5,14 +5,19 @@
  */
 import {
   ErrorCodes,
+  findDuplicateSuggestions,
   gradeAnswer,
+  groupWriteIn,
   normalizeText,
+  normalizeWriteIn,
   OPEN_ENDED_MAX,
   TYPE_ANSWER_MAX,
+  WRITE_IN_MAX,
   type AnswerValue,
   type QuestionResults,
   type Voter,
   type VoterGroup,
+  type WriteInSubmission,
 } from '@livevote/shared';
 import { isProfane } from '../util/nickname.js';
 import type { LoadedQuestion, RecordedAnswer } from './types.js';
@@ -111,6 +116,25 @@ export function prepareAnswer(q: LoadedQuestion, value: AnswerValue): PreparedAn
       }
       return { ok: true, value: { kind: 'number', value: value.value } };
     }
+    case 'WRITE_IN': {
+      if (value.kind !== 'text') return err(ErrorCodes.OPTION_INVALID, 'Expected text');
+      const max = q.config.maxAnswerLength ?? WRITE_IN_MAX;
+      const text = sanitizeText(value.text);
+      if (text.length === 0 || text.length > max) {
+        return err(ErrorCodes.OPTION_INVALID, `Answer must be 1–${max} characters`);
+      }
+      if (isProfane(text)) {
+        return err(ErrorCodes.NICKNAME_PROFANE, 'Please keep it friendly');
+      }
+      // "Allow only suggested answers" — reject anything not on the roster.
+      if (q.config.onlySuggested) {
+        const allowed = (q.config.suggestedAnswers ?? []).map(normalizeWriteIn);
+        if (!allowed.includes(normalizeWriteIn(text))) {
+          return err(ErrorCodes.OPTION_INVALID, 'Please choose one of the suggested answers');
+        }
+      }
+      return { ok: true, value: { kind: 'text', text } };
+    }
   }
 }
 
@@ -143,10 +167,18 @@ function round1(n: number): number {
  * Build the full reveal payload for a question, including per-type data and
  * (host-only) voter names when `showNames` is true.
  */
+export interface WriteInState {
+  /** source normalized key -> target key (host merges). */
+  merges?: Record<string, string>;
+  /** resolved group keys the host has hidden. */
+  hiddenGroups?: Set<string>;
+}
+
 export function buildResults(
   q: LoadedQuestion,
   entries: RevealEntry[],
   showNames: boolean,
+  writeInState: WriteInState = {},
 ): QuestionResults {
   const totalPlayers = entries.length;
   const answeredEntries = entries.filter((e) => e.answer !== null);
@@ -326,6 +358,36 @@ export function buildResults(
         }));
         base.noAnswer = noAnswer;
       }
+      break;
+    }
+
+    case 'WRITE_IN': {
+      const merges = writeInState.merges ?? {};
+      const hiddenGroups = writeInState.hiddenGroups ?? new Set<string>();
+      // Submission order (by response time) for label tie-breaks + voter order.
+      const subs: WriteInSubmission<Voter>[] = answeredEntries
+        .filter((e) => e.answer!.value.kind === 'text')
+        .sort((a, b) => (a.answer!.responseMs - b.answer!.responseMs))
+        .map((e) => ({
+          text: (e.answer!.value as { kind: 'text'; text: string }).text,
+          voter: toVoter(e),
+          hidden: e.answer!.hidden === true,
+        }));
+      let groups = groupWriteIn(subs, q.config.suggestedAnswers ?? [], merges);
+      groups = groups.filter((g) => !hiddenGroups.has(g.key));
+      const visibleTotal = groups.reduce((s, g) => s + g.count, 0);
+      base.writeIn = {
+        groups: groups.map((g) => ({
+          key: g.key,
+          label: g.label,
+          count: g.count,
+          percent: visibleTotal === 0 ? 0 : Math.round((g.count / visibleTotal) * 100),
+          ...(showNames ? { voters: g.voters } : {}),
+        })),
+        duplicates: findDuplicateSuggestions(groups.map((g) => ({ key: g.key, label: g.label }))),
+        reviewBeforeReveal: q.config.reviewBeforeReveal === true,
+      };
+      if (showNames) base.noAnswer = noAnswer;
       break;
     }
   }

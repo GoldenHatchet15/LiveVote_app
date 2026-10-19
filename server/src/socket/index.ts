@@ -118,6 +118,27 @@ export function registerSocketHandlers(io: TypedServer): void {
       ack(engine.setHiddenResponse(playerId, Boolean(hidden)));
     });
 
+    socket.on('host:writeInMerge', ({ sessionId, sourceKey, targetKey }, ack) => {
+      if (!socket.data.isAdmin) return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });
+      const engine = sessionManager.get(sessionId);
+      if (!engine) return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session not found' });
+      ack(engine.mergeWriteIn(String(sourceKey ?? ''), String(targetKey ?? '')));
+    });
+
+    socket.on('host:writeInUndoMerge', ({ sessionId, sourceKey }, ack) => {
+      if (!socket.data.isAdmin) return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });
+      const engine = sessionManager.get(sessionId);
+      if (!engine) return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session not found' });
+      ack(engine.undoMergeWriteIn(String(sourceKey ?? '')));
+    });
+
+    socket.on('host:writeInHideGroup', ({ sessionId, key, hidden }, ack) => {
+      if (!socket.data.isAdmin) return ack({ ok: false, code: ErrorCodes.NOT_AUTHENTICATED, message: 'Admin login required' });
+      const engine = sessionManager.get(sessionId);
+      if (!engine) return ack({ ok: false, code: ErrorCodes.SESSION_NOT_FOUND, message: 'Session not found' });
+      ack(engine.hideWriteInGroup(String(key ?? ''), Boolean(hidden)));
+    });
+
     // ---------------------------------------------------------- player
     socket.on('player:join', async (payload, ack) => {
       try {
